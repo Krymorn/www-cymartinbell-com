@@ -181,9 +181,11 @@
       <h2>Let's connect.</h2>
       <p>Questions, collaborations, or just saying hi. To hire me for a website or tool, use the <a href="services.html#start">project form</a>.</p>
     </div>
-    <form class="form js-form" name="contact" method="POST" action="thanks.html" data-netlify="true" netlify-honeypot="company">
-      <input type="hidden" name="form-name" value="contact">
-      <p class="hp"><label>Leave blank <input name="company" tabindex="-1" autocomplete="off"></label></p>
+    <form class="form js-form" name="contact" method="POST" action="https://api.web3forms.com/submit" data-redirect="thanks.html">
+      <input type="hidden" name="access_key" value="e09d9b43-c433-49d0-9579-5276bfa7a19a">
+      <input type="hidden" name="subject" value="New message from cymartinbell.com">
+      <input type="hidden" name="from_name" value="cymartinbell.com">
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="row">
         <label>Name <input name="name" autocomplete="name" required></label>
         <label>Email <input type="email" name="email" autocomplete="email" required></label>

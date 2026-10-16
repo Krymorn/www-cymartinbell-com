@@ -205,9 +205,11 @@
       <h2>Get in touch.</h2>
       <p>Have a question, or something you'd like help with? Send me a note and I'll get back to you within a couple of days.</p>
     </div>
-    <form class="form js-form" name="project-inquiry" method="POST" action="thanks.html" data-netlify="true" netlify-honeypot="company">
-      <input type="hidden" name="form-name" value="project-inquiry">
-      <p class="hp"><label>Leave blank <input name="company" tabindex="-1" autocomplete="off"></label></p>
+    <form class="form js-form" name="project-inquiry" method="POST" action="https://api.web3forms.com/submit" data-redirect="thanks.html">
+      <input type="hidden" name="access_key" value="e09d9b43-c433-49d0-9579-5276bfa7a19a">
+      <input type="hidden" name="subject" value="New project inquiry from cymartinbell.com">
+      <input type="hidden" name="from_name" value="cymartinbell.com">
+      <input type="checkbox" name="botcheck" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
       <div class="row">
         <label>Your name <input name="name" autocomplete="name" required></label>
         <label>Email <input type="email" name="email" autocomplete="email" required></label>

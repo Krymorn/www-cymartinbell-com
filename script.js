@@ -60,28 +60,25 @@ document.querySelectorAll('[data-copy]').forEach(b => {
   });
 });
 
-// Forms: submit in the background to Netlify, then show the thanks page.
-// If the site isn't on Netlify (e.g. opened from your computer) show a clear message instead.
+// Forms: sent in the background through Web3Forms (emails go to Cy), then show the thanks page.
 document.querySelectorAll('.js-form').forEach(form => {
   const status = form.querySelector('.form-status');
   const btn = form.querySelector('[type=submit]');
+  const say = (msg, err) => { if (status) { status.textContent = msg; status.classList.toggle('err', !!err); } };
   form.addEventListener('submit', async e => {
     e.preventDefault();
     if (!form.reportValidity()) return;
-    const say = (msg, err) => { if (status) { status.textContent = msg; status.classList.toggle('err', !!err); } };
-    if (location.protocol === 'file:') {
-      say('Forms only send once the site is live on Netlify. You can email cymartinbell@gmail.com in the meantime.', true);
-      return;
-    }
+    if (form.querySelector('[name=botcheck]')?.checked) return; // spam bot
     btn.disabled = true; const label = btn.textContent; btn.textContent = 'Sending…'; say('');
     try {
-      const res = await fetch('/', {
+      const res = await fetch(form.action, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(new FormData(form)).toString()
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify(Object.fromEntries(new FormData(form)))
       });
-      if (!res.ok) throw new Error(res.status);
-      window.location.href = form.getAttribute('action') || 'thanks.html';
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.success === false) throw new Error(data.message || res.status);
+      window.location.href = form.dataset.redirect || 'thanks.html';
     } catch {
       say("Sorry, that didn't send. Please email cymartinbell@gmail.com directly.", true);
       btn.disabled = false; btn.textContent = label;

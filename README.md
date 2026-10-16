@@ -1,6 +1,6 @@
 # Cy Martin-Bell — portfolio + web design services
 
-Static site, no build step. Deploys on Netlify from GitHub.
+Static site, no build step. Hosted on Cloudflare Pages from GitHub.
 
 ## Files
 | File | What it is |
@@ -8,8 +8,8 @@ Static site, no build step. Deploys on Netlify from GitHub.
 | `index.html` | Personal portfolio (about, projects, activities, gallery, contact) |
 | `services.html` | Studio page for nonprofits & small businesses (services, client work, process, pricing, FAQ, project inquiry form) |
 | `privacy.html`, `terms.html` | Legal templates — review before launch |
-| `thanks.html` | Shown after any form is submitted |
-| `404.html` | Not-found page (Netlify uses it automatically) |
+| `thanks.html` | Shown after a form is sent |
+| `404.html` | Not-found page (Cloudflare uses it automatically) |
 | `style.css`, `script.js` | Shared design and behavior |
 | `images/` | All photos |
 
@@ -27,17 +27,24 @@ Put these in `images/` (JPG, ~2000px wide max, under ~400 KB each):
 
 Missing photos show an "Add photo" box, so nothing breaks.
 
-## Forms
-**Required once:** in Netlify go to your site → Forms → **Enable form detection**, then redeploy. Without this step forms won't receive anything.
+## Forms (Web3Forms, free: 250 messages/month)
+Cloudflare Pages has no built-in form handling, so both forms send through Web3Forms,
+which emails each message to you.
 
-Forms only work on the live site, not when opening the files from your computer.
+1. Go to https://web3forms.com, enter cymartinbell@gmail.com, and copy the access key it emails you.
+2. In `index.html` and `services.html`, replace `YOUR_WEB3FORMS_ACCESS_KEY` with that key.
+3. Push. Done. Test it once on the live site.
 
-The contact form and project inquiry form use **Netlify Forms** — no code needed.
-Submissions appear in Netlify → your site → Forms. Turn on email
-notifications there (Forms → Form notifications).
+The access key is meant to be public, so it's fine in the HTML.
 
-## Deploy
+## Deploy (Cloudflare Pages)
 1. Push this folder to GitHub.
-2. Netlify → Add new site → Import an existing project → GitHub → pick repo.
-3. Leave build command empty. Publish directory: `.`
-4. Netlify → Domain management → add your custom domain.
+2. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git → pick the repo.
+3. Framework preset: **None**. Build command: leave empty. Build output directory: `/`
+4. Custom domains → add cymartinbell.com.
+
+Every push to `main` redeploys automatically.
+
+- `_headers` sets security headers (Cloudflare reads it automatically).
+- `404.html` is used automatically for missing pages.
+- Cloudflare serves clean URLs: `/services` works, and `/services.html` redirects to it.
