@@ -226,3 +226,6 @@ section{padding:88px 0;border-top:1px solid var(--line)}
 .np b{font-weight:600}
 .ret{font-size:14px;font-weight:500;margin:-12px 0 20px}
 .ret span{color:var(--muted);font-weight:400}
+.plan li.eg{padding-left:44px;color:var(--muted);font-size:14.5px;border-top:0;padding-top:2px}
+.plan li.eg::before{content:"–";left:26px;color:var(--muted);font-weight:400}
+.compare{font-size:14px;color:var(--muted);margin-top:24px;text-align:center}
