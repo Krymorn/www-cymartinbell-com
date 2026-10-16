@@ -1,10 +1,10 @@
 [build]
   publish = "."
 
-# Clean URLs: /product -> product.html
+# Clean URLs: /services -> services.html
 [[redirects]]
-  from = "/product"
-  to = "/product.html"
+  from = "/services"
+  to = "/services.html"
   status = 200
 
 [[headers]]
