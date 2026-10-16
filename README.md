@@ -1,10 +1,10 @@
 # Portfolio
 
-Plain HTML/CSS/JS. No build step.
+Plain HTML (styles and script are inside index.html). No build step.
 
 - `index.html` – all the content; replace anything in [brackets]
-- `style.css` – colors and fonts are at the top
-- `images/` – put photos here (profile.jpg, project1–3.jpg, photo1–6.jpg)
+
+- `images/` – put photos here (profile.jpg, project1–3.jpg, gallery1–5.jpg)
 
 ## Deploy on Netlify
 1. Push this folder to a GitHub repo.

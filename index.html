@@ -2,124 +2,262 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>[Your Name]</title>
-<meta name="description" content="[Your Name] — projects, activities and photographs.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Name — Portfolio</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fbfaf7; --surface:#ffffff; --ink:#1c1c1a; --muted:#6b6a65;
+    --line:#e6e3dc; --accent:#2f5d50; --accent-soft:#e7efec;
+    --radius:14px; --max:1100px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--ink);line-height:1.65;font-size:17px}
+  h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:600;line-height:1.15}
+  a{color:var(--accent);text-decoration:none}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:10;background:rgba(251,250,247,.9);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  nav .wrap{display:flex;justify-content:space-between;align-items:center;height:64px}
+  .logo{font-family:Fraunces,serif;font-weight:600;font-size:20px;color:var(--ink)}
+  .links{display:flex;gap:28px}
+  .links a{color:var(--muted);font-size:15px;font-weight:500}
+  .links a:hover{color:var(--ink)}
+
+  /* PHOTO SLOTS */
+  .photo{position:relative;background:var(--accent-soft);overflow:hidden;border-radius:var(--radius)}
+  .photo img{width:100%;height:100%;object-fit:cover;display:block}
+  .photo.empty::after{content:"Add photo";position:absolute;inset:0;display:grid;place-items:center;color:var(--accent);font-size:14px;font-weight:500;letter-spacing:.04em}
+
+  /* HERO */
+  .hero{padding:96px 0 80px}
+  .hero .wrap{display:grid;grid-template-columns:1.3fr 1fr;gap:64px;align-items:center}
+  .eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:13px;color:var(--accent);font-weight:600;margin-bottom:16px}
+  .hero h1{font-size:clamp(40px,6vw,64px);margin-bottom:20px}
+  .hero p{color:var(--muted);font-size:19px;max-width:520px;margin-bottom:32px}
+  .btn{display:inline-block;padding:12px 24px;border-radius:999px;background:var(--ink);color:#fff;font-weight:500;font-size:15px;margin-right:10px}
+  .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  .hero .photo{aspect-ratio:4/5}
+
+  /* SECTIONS */
+  section{padding:88px 0;border-top:1px solid var(--line)}
+  .section-head{margin-bottom:44px}
+  .section-head h2{font-size:clamp(30px,4vw,42px);margin-bottom:8px}
+  .section-head p{color:var(--muted)}
+
+  /* ABOUT */
+  .about{display:grid;grid-template-columns:2fr 1fr;gap:56px}
+  .about p+p{margin-top:16px}
+  .facts{list-style:none;border-left:2px solid var(--accent-soft);padding-left:24px}
+  .facts li{margin-bottom:18px}
+  .facts span{display:block;font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:24px}
+  .tag{background:var(--accent-soft);color:var(--accent);padding:5px 13px;border-radius:999px;font-size:14px;font-weight:500}
+
+  /* PROJECTS */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:28px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;transition:transform .2s,box-shadow .2s}
+  .card:hover{transform:translateY(-4px);box-shadow:0 14px 34px rgba(0,0,0,.07)}
+  .card .photo{aspect-ratio:16/10;border-radius:0}
+  .card-body{padding:22px 24px 26px}
+  .meta{font-size:13px;color:var(--muted);margin-bottom:6px}
+  .card h3{font-size:22px;margin-bottom:10px}
+  .card p{color:var(--muted);font-size:15.5px}
+  .card .tags{margin-top:16px}
+
+  /* ACTIVITIES */
+  .timeline{list-style:none;max-width:780px}
+  .item{display:grid;grid-template-columns:150px 1fr;gap:28px;padding:28px 0;border-bottom:1px solid var(--line)}
+  .item:first-child{padding-top:0}
+  .when{color:var(--muted);font-size:15px;padding-top:4px}
+  .item h3{font-size:21px;margin-bottom:4px}
+  .role{color:var(--accent);font-weight:500;font-size:15px;margin-bottom:8px}
+  .item p{color:var(--muted);font-size:15.5px}
+
+  /* GALLERY */
+  .gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .gallery .photo{aspect-ratio:1}
+  .gallery .photo.wide{grid-column:span 2;aspect-ratio:auto}
+
+  /* CONTACT */
+  .contact{text-align:center}
+  .contact h2{font-size:clamp(32px,5vw,48px);margin-bottom:14px}
+  .contact p{color:var(--muted);margin-bottom:30px}
+  .socials{display:flex;justify-content:center;gap:24px;margin-top:28px}
+  .socials a{color:var(--muted);font-weight:500}
+  footer{padding:32px 0;text-align:center;color:var(--muted);font-size:14px;border-top:1px solid var(--line)}
+
+  @media (max-width:820px){
+    .links{display:none}
+    .hero{padding:56px 0}
+    .hero .wrap,.about{grid-template-columns:1fr;gap:40px}
+    .item{grid-template-columns:1fr;gap:6px}
+    .gallery{grid-template-columns:1fr 1fr}
+    section{padding:64px 0}
+  }
+</style>
 </head>
 <body>
 
-<!--
-  EDITING
-  - Replace anything in [brackets].
-  - Photos go in /images. Match the file names below or change them.
-  - Copy a whole <article class="project"> or <tr> to add more.
--->
+<!-- ============================================================
+     HOW TO EDIT
+     1. Replace any text in [brackets] with your own.
+     2. Put your photos in a folder named "images" next to this file,
+        using the file names in each <img src="...">  (or change the names).
+        Empty slots show a soft "Add photo" box until a photo is found.
+     3. To add another project/activity, copy one card or item block.
+     ============================================================ -->
 
-<header class="top">
-  <a href="/" class="name">[Your Name]</a>
-  <nav>
-    <a href="#work">Work</a>
-    <a href="#activities">Activities</a>
-    <a href="#photos">Photos</a>
-    <a href="#contact">Contact</a>
-  </nav>
+<nav>
+  <div class="wrap">
+    <a href="#top" class="logo">[Your Name]</a>
+    <div class="links">
+      <a href="#about">About</a>
+      <a href="#projects">Projects</a>
+      <a href="#activities">Activities</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">[Student · Designer · Builder]</div>
+      <h1>Hi, I'm [Your Name].</h1>
+      <p>[One or two sentences about who you are, what you care about, and what you're working toward.]</p>
+      <a href="#projects" class="btn">View my work</a>
+      <a href="#contact" class="btn ghost">Get in touch</a>
+    </div>
+    <div class="photo"><img src="images/profile.jpg" alt="Portrait of [Your Name]"></div>
+  </div>
 </header>
 
-<main>
-
-  <section class="intro">
-    <p class="lede">
-      [I'm a student in Sudbury, MA who builds things, takes pictures, and
-      spends too much time on <em>whatever I'm currently obsessed with</em>.
-      This is a record of what I've made and done.]
-    </p>
-    <dl class="facts">
-      <div><dt>Now</dt><dd>[What you're doing right now]</dd></div>
-      <div><dt>School</dt><dd>[School name, class of 20XX]</dd></div>
-      <div><dt>Interests</dt><dd>[Three or four things, plainly listed]</dd></div>
-    </dl>
-  </section>
-
-  <figure class="portrait">
-    <img src="images/profile.jpg" alt="[Your Name]">
-    <figcaption>[Where/when this photo was taken]</figcaption>
-  </figure>
-
-  <section id="work">
-    <h2 class="label">Selected work</h2>
-
-    <article class="project">
-      <div class="num">01</div>
-      <div class="text">
-        <h3>[Project title]</h3>
-        <p class="sub">[Year] — [Type: e.g. engineering, research, design]</p>
-        <p>[Two or three sentences in your own voice. What was the problem,
-        what did you actually do, and what happened? Specific details beat
-        big words.]</p>
-        <a class="more" href="#">[Link to more →]</a>
+<section id="about">
+  <div class="wrap">
+    <div class="section-head"><h2>About</h2></div>
+    <div class="about">
+      <div>
+        <p>[Write a short introduction: your background, interests, and what drives you.]</p>
+        <p>[Add a second paragraph about your goals, experiences, or what you're currently exploring.]</p>
+        <div class="tags">
+          <span class="tag">[Skill]</span><span class="tag">[Skill]</span>
+          <span class="tag">[Skill]</span><span class="tag">[Skill]</span>
+        </div>
       </div>
-      <img src="images/project1.jpg" alt="[Project title]">
-    </article>
-
-    <article class="project">
-      <div class="num">02</div>
-      <div class="text">
-        <h3>[Project title]</h3>
-        <p class="sub">[Year] — [Type]</p>
-        <p>[Two or three sentences about the project.]</p>
-      </div>
-      <img src="images/project2.jpg" alt="[Project title]">
-    </article>
-
-    <article class="project">
-      <div class="num">03</div>
-      <div class="text">
-        <h3>[Project title]</h3>
-        <p class="sub">[Year] — [Type]</p>
-        <p>[Two or three sentences about the project.]</p>
-      </div>
-      <img src="images/project3.jpg" alt="[Project title]">
-    </article>
-  </section>
-
-  <section id="activities">
-    <h2 class="label">Activities</h2>
-    <table class="acts">
-      <tr><td class="yr">[2024–now]</td><td><b>[Organization]</b>, [role]</td><td class="note">[One line on what you do there]</td></tr>
-      <tr><td class="yr">[2023–now]</td><td><b>[Team / club]</b>, [role]</td><td class="note">[One line]</td></tr>
-      <tr><td class="yr">[2023]</td><td><b>[Volunteer work]</b></td><td class="note">[One line]</td></tr>
-      <tr><td class="yr">[2022–24]</td><td><b>[Job / program]</b>, [role]</td><td class="note">[One line]</td></tr>
-    </table>
-  </section>
-
-  <section id="photos">
-    <h2 class="label">Photographs</h2>
-    <div class="photos">
-      <figure><img src="images/photo1.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
-      <figure><img src="images/photo2.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
-      <figure><img src="images/photo3.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
-      <figure><img src="images/photo4.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
-      <figure><img src="images/photo5.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
-      <figure><img src="images/photo6.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <ul class="facts">
+        <li><span>Education</span>[School Name], [Year]</li>
+        <li><span>Location</span>[City, State]</li>
+        <li><span>Focus</span>[Area of interest]</li>
+        <li><span>Currently</span>[What you're doing now]</li>
+      </ul>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section id="contact" class="contact">
-    <h2 class="label">Contact</h2>
-    <p>Email is best: <a href="mailto:[you@example.com]">[you@example.com]</a></p>
-    <p class="elsewhere">
-      <a href="#">[LinkedIn]</a> / <a href="#">[GitHub]</a> / <a href="#">[Instagram]</a>
-    </p>
-  </section>
+<section id="projects">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Projects</h2>
+      <p>A selection of things I've made and worked on.</p>
+    </div>
+    <div class="grid">
+      <article class="card">
+        <div class="photo"><img src="images/project1.jpg" alt="[Project 1]"></div>
+        <div class="card-body">
+          <div class="meta">[Month Year]</div>
+          <h3>[Project Title]</h3>
+          <p>[What it is, your role, and the result or what you learned.]</p>
+          <div class="tags"><span class="tag">[Tool]</span><span class="tag">[Topic]</span></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="photo"><img src="images/project2.jpg" alt="[Project 2]"></div>
+        <div class="card-body">
+          <div class="meta">[Month Year]</div>
+          <h3>[Project Title]</h3>
+          <p>[What it is, your role, and the result or what you learned.]</p>
+          <div class="tags"><span class="tag">[Tool]</span><span class="tag">[Topic]</span></div>
+        </div>
+      </article>
+      <article class="card">
+        <div class="photo"><img src="images/project3.jpg" alt="[Project 3]"></div>
+        <div class="card-body">
+          <div class="meta">[Month Year]</div>
+          <h3>[Project Title]</h3>
+          <p>[What it is, your role, and the result or what you learned.]</p>
+          <div class="tags"><span class="tag">[Tool]</span><span class="tag">[Topic]</span></div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
 
-</main>
+<section id="activities">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Activities</h2>
+      <p>Clubs, leadership, volunteering, and everything in between.</p>
+    </div>
+    <ul class="timeline">
+      <li class="item">
+        <div class="when">[2025 – Present]</div>
+        <div><h3>[Organization / Club]</h3><div class="role">[Your Role]</div>
+          <p>[What you do and an accomplishment you're proud of.]</p></div>
+      </li>
+      <li class="item">
+        <div class="when">[2024 – 2025]</div>
+        <div><h3>[Organization / Team]</h3><div class="role">[Your Role]</div>
+          <p>[What you do and an accomplishment you're proud of.]</p></div>
+      </li>
+      <li class="item">
+        <div class="when">[2023 – 2024]</div>
+        <div><h3>[Volunteer Work]</h3><div class="role">[Your Role]</div>
+          <p>[What you do and an accomplishment you're proud of.]</p></div>
+      </li>
+    </ul>
+  </div>
+</section>
 
-<footer>[Your Name], [year]. Built by hand.</footer>
+<section id="gallery">
+  <div class="wrap">
+    <div class="section-head">
+      <h2>Gallery</h2>
+      <p>Moments from my work and activities.</p>
+    </div>
+    <div class="gallery">
+      <div class="photo wide"><img src="images/gallery1.jpg" alt="[Caption]"></div>
+      <div class="photo"><img src="images/gallery2.jpg" alt="[Caption]"></div>
+      <div class="photo"><img src="images/gallery3.jpg" alt="[Caption]"></div>
+      <div class="photo"><img src="images/gallery4.jpg" alt="[Caption]"></div>
+      <div class="photo"><img src="images/gallery5.jpg" alt="[Caption]"></div>
+    </div>
+  </div>
+</section>
 
-<div class="lightbox" hidden><img alt=""></div>
-<script src="script.js"></script>
+<section id="contact" class="contact">
+  <div class="wrap">
+    <h2>Let's connect.</h2>
+    <p>[A short line inviting people to reach out.]</p>
+    <a href="mailto:you@example.com" class="btn">you@example.com</a>
+    <div class="socials">
+      <a href="#">LinkedIn</a><a href="#">GitHub</a><a href="#">Instagram</a>
+    </div>
+  </div>
+</section>
+
+<footer>© <span id="yr"></span> [Your Name]</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+  // Show a clean "Add photo" placeholder for any image not yet added
+  document.querySelectorAll('.photo img').forEach(img => {
+    const mark = () => { img.style.display='none'; img.parentElement.classList.add('empty'); };
+    if (img.complete && !img.naturalWidth) mark(); else img.addEventListener('error', mark);
+  });
+</script>
 </body>
 </html>
