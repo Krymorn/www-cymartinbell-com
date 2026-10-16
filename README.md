@@ -1,4 +1,4 @@
-# Cy Martin-Bell — portfolio + [Studio Name]
+# Cy Martin-Bell — portfolio + web design services
 
 Static site, no build step. Deploys on Netlify from GitHub.
 
@@ -15,7 +15,7 @@ Static site, no build step. Deploys on Netlify from GitHub.
 
 ## Filling it in
 Search the project for `[` and replace every bracketed placeholder.
-Do a find-and-replace for `[Studio Name]` and `[yourdomain.com]` first.
+Do a find-and-replace for `[yourdomain.com]` first.
 
 ## Photos
 Put these in `images/` (JPG, ~2000px wide max, under ~400 KB each):
