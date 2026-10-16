@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[Your Name]</title>
+<meta name="description" content="[Your Name] — projects, activities and photographs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!--
+  EDITING
+  - Replace anything in [brackets].
+  - Photos go in /images. Match the file names below or change them.
+  - Copy a whole <article class="project"> or <tr> to add more.
+-->
+
+<header class="top">
+  <a href="/" class="name">[Your Name]</a>
+  <nav>
+    <a href="#work">Work</a>
+    <a href="#activities">Activities</a>
+    <a href="#photos">Photos</a>
+    <a href="#contact">Contact</a>
+  </nav>
+</header>
+
+<main>
+
+  <section class="intro">
+    <p class="lede">
+      [I'm a student in Sudbury, MA who builds things, takes pictures, and
+      spends too much time on <em>whatever I'm currently obsessed with</em>.
+      This is a record of what I've made and done.]
+    </p>
+    <dl class="facts">
+      <div><dt>Now</dt><dd>[What you're doing right now]</dd></div>
+      <div><dt>School</dt><dd>[School name, class of 20XX]</dd></div>
+      <div><dt>Interests</dt><dd>[Three or four things, plainly listed]</dd></div>
+    </dl>
+  </section>
+
+  <figure class="portrait">
+    <img src="images/profile.jpg" alt="[Your Name]">
+    <figcaption>[Where/when this photo was taken]</figcaption>
+  </figure>
+
+  <section id="work">
+    <h2 class="label">Selected work</h2>
+
+    <article class="project">
+      <div class="num">01</div>
+      <div class="text">
+        <h3>[Project title]</h3>
+        <p class="sub">[Year] — [Type: e.g. engineering, research, design]</p>
+        <p>[Two or three sentences in your own voice. What was the problem,
+        what did you actually do, and what happened? Specific details beat
+        big words.]</p>
+        <a class="more" href="#">[Link to more →]</a>
+      </div>
+      <img src="images/project1.jpg" alt="[Project title]">
+    </article>
+
+    <article class="project">
+      <div class="num">02</div>
+      <div class="text">
+        <h3>[Project title]</h3>
+        <p class="sub">[Year] — [Type]</p>
+        <p>[Two or three sentences about the project.]</p>
+      </div>
+      <img src="images/project2.jpg" alt="[Project title]">
+    </article>
+
+    <article class="project">
+      <div class="num">03</div>
+      <div class="text">
+        <h3>[Project title]</h3>
+        <p class="sub">[Year] — [Type]</p>
+        <p>[Two or three sentences about the project.]</p>
+      </div>
+      <img src="images/project3.jpg" alt="[Project title]">
+    </article>
+  </section>
+
+  <section id="activities">
+    <h2 class="label">Activities</h2>
+    <table class="acts">
+      <tr><td class="yr">[2024–now]</td><td><b>[Organization]</b>, [role]</td><td class="note">[One line on what you do there]</td></tr>
+      <tr><td class="yr">[2023–now]</td><td><b>[Team / club]</b>, [role]</td><td class="note">[One line]</td></tr>
+      <tr><td class="yr">[2023]</td><td><b>[Volunteer work]</b></td><td class="note">[One line]</td></tr>
+      <tr><td class="yr">[2022–24]</td><td><b>[Job / program]</b>, [role]</td><td class="note">[One line]</td></tr>
+    </table>
+  </section>
+
+  <section id="photos">
+    <h2 class="label">Photographs</h2>
+    <div class="photos">
+      <figure><img src="images/photo1.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <figure><img src="images/photo2.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <figure><img src="images/photo3.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <figure><img src="images/photo4.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <figure><img src="images/photo5.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+      <figure><img src="images/photo6.jpg" alt=""><figcaption>[Caption]</figcaption></figure>
+    </div>
+  </section>
+
+  <section id="contact" class="contact">
+    <h2 class="label">Contact</h2>
+    <p>Email is best: <a href="mailto:[you@example.com]">[you@example.com]</a></p>
+    <p class="elsewhere">
+      <a href="#">[LinkedIn]</a> / <a href="#">[GitHub]</a> / <a href="#">[Instagram]</a>
+    </p>
+  </section>
+
+</main>
+
+<footer>[Your Name], [year]. Built by hand.</footer>
+
+<div class="lightbox" hidden><img alt=""></div>
+<script src="script.js"></script>
+</body>
+</html>
