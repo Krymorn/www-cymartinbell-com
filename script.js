@@ -50,3 +50,41 @@ if (box) {
   box.addEventListener('click', shut);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !box.hidden) shut(); });
 }
+
+// Copy email address (works even if no mail app is set up)
+document.querySelectorAll('[data-copy]').forEach(b => {
+  b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); }
+    catch { const r=document.createRange(); const s=document.createElement('span'); s.textContent=b.dataset.copy; document.body.append(s); r.selectNode(s); getSelection().removeAllRanges(); getSelection().addRange(r); document.execCommand('copy'); s.remove(); }
+    const old=b.textContent; b.textContent='Copied!'; setTimeout(()=>b.textContent=old,1800);
+  });
+});
+
+// Forms: submit in the background to Netlify, then show the thanks page.
+// If the site isn't on Netlify (e.g. opened from your computer) show a clear message instead.
+document.querySelectorAll('.js-form').forEach(form => {
+  const status = form.querySelector('.form-status');
+  const btn = form.querySelector('[type=submit]');
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!form.reportValidity()) return;
+    const say = (msg, err) => { if (status) { status.textContent = msg; status.classList.toggle('err', !!err); } };
+    if (location.protocol === 'file:') {
+      say('Forms only send once the site is live on Netlify. You can email cymartinbell@gmail.com in the meantime.', true);
+      return;
+    }
+    btn.disabled = true; const label = btn.textContent; btn.textContent = 'Sending…'; say('');
+    try {
+      const res = await fetch('/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams(new FormData(form)).toString()
+      });
+      if (!res.ok) throw new Error(res.status);
+      window.location.href = form.getAttribute('action') || 'thanks.html';
+    } catch {
+      say("Sorry, that didn't send. Please email cymartinbell@gmail.com directly.", true);
+      btn.disabled = false; btn.textContent = label;
+    }
+  });
+});

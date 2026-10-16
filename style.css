@@ -229,3 +229,8 @@ section{padding:88px 0;border-top:1px solid var(--line)}
 .plan li.eg{padding-left:44px;color:var(--muted);font-size:14.5px;border-top:0;padding-top:2px}
 .plan li.eg::before{content:"–";left:26px;color:var(--muted);font-weight:400}
 .compare{font-size:14px;color:var(--muted);margin-top:24px;text-align:center}
+.copy{font:inherit;font-size:13px;font-weight:500;margin-left:6px;padding:3px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);cursor:pointer;vertical-align:1px}
+.copy:hover{color:var(--ink);border-color:var(--ink)}
+.form-status{font-size:14px;color:var(--accent);min-height:1.2em}
+.form-status.err{color:#a3341d}
+.btn:disabled{opacity:.6;cursor:default}

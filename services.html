@@ -26,7 +26,7 @@
 
 <header class="site-nav">
   <div class="wrap">
-    <a href="/" class="logo">Cy Martin-Bell</a>
+    <a href="index.html" class="logo">Cy Martin-Bell</a>
     <button class="menu-btn" aria-label="Menu" aria-expanded="false" aria-controls="nav-links"><span></span><span></span><span></span></button>
     <nav class="links" id="nav-links" aria-label="Main">
       <a href="#services">Services</a>
@@ -34,7 +34,7 @@
       <a href="#process">Process</a>
       <a href="#pricing">Pricing</a>
       <a href="#faq">FAQ</a>
-      <a href="/">About me</a>
+      <a href="index.html">About me</a>
       <a href="#start" class="btn accent">Get in touch</a>
     </nav>
   </div>
@@ -194,7 +194,7 @@
       <details><summary>Can you work with the tools we already use?</summary><p>Usually, yes: donation platforms like Donorbox and Givebutter, payment and booking tools like Stripe, Square, and Calendly, plus Google Workspace. Ask about yours.</p></details>
       <details><summary>Why is there a monthly retainer?</summary><p>Most sites and tools rely on services that charge monthly, like hosting, domains, or software platforms. The retainer covers those costs and my time making updates when you ask, so you never have to manage any of it yourself.</p></details>
       <details><summary>What if we have a really small budget?</summary><p>Tell me what you have. I can often scope a smaller first version, or set up a payment plan.</p></details>
-      <details><summary>Who will I be working with?</summary><p>Me. I'm Cy, and I handle every project myself, from the first call to launch. <a href="/">More about me</a>.</p></details>
+      <details><summary>Who will I be working with?</summary><p>Me. I'm Cy, and I handle every project myself, from the first call to launch. <a href="index.html">More about me</a>.</p></details>
     </div>
   </div>
 </section>
@@ -205,7 +205,7 @@
       <h2>Get in touch.</h2>
       <p>Have a question, or something you'd like help with? Send me a note and I'll get back to you within a couple of days.</p>
     </div>
-    <form class="form" name="project-inquiry" method="POST" action="/thanks.html" data-netlify="true" netlify-honeypot="company">
+    <form class="form js-form" name="project-inquiry" method="POST" action="thanks.html" data-netlify="true" netlify-honeypot="company">
       <input type="hidden" name="form-name" value="project-inquiry">
       <p class="hp"><label>Leave blank <input name="company" tabindex="-1" autocomplete="off"></label></p>
       <div class="row">
@@ -241,8 +241,9 @@
       </label>
       <label>Message <textarea name="message" placeholder="What do you do, and is there anything you'd like help with?" required></textarea></label>
       <button class="btn accent" type="submit">Send message</button>
+      <p class="form-status" role="status" aria-live="polite"></p>
     </form>
-    <p class="fine">Prefer email? <a href="mailto:cymartinbell@gmail.com">cymartinbell@gmail.com</a></p>
+    <p class="fine">Prefer email? <a href="mailto:cymartinbell@gmail.com">cymartinbell@gmail.com</a> <button type="button" class="copy" data-copy="cymartinbell@gmail.com">Copy</button></p>
   </div>
 </section>
 
@@ -250,7 +251,7 @@
 
 <footer class="site-footer">
   <div class="wrap">
-    <span>© <span data-year></span> <a href="/">Cy Martin-Bell</a> · Web design &amp; development</span>
+    <span>© <span data-year></span> <a href="index.html">Cy Martin-Bell</a> · Web design &amp; development</span>
     <nav aria-label="Footer">
       <a href="#pricing">Pricing</a>
       <a href="#start">Get in touch</a>

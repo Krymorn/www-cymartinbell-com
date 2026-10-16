@@ -28,6 +28,10 @@ Put these in `images/` (JPG, ~2000px wide max, under ~400 KB each):
 Missing photos show an "Add photo" box, so nothing breaks.
 
 ## Forms
+**Required once:** in Netlify go to your site → Forms → **Enable form detection**, then redeploy. Without this step forms won't receive anything.
+
+Forms only work on the live site, not when opening the files from your computer.
+
 The contact form and project inquiry form use **Netlify Forms** — no code needed.
 Submissions appear in Netlify → your site → Forms. Turn on email
 notifications there (Forms → Form notifications).
