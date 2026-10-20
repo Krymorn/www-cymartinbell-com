@@ -224,7 +224,7 @@ section{padding:88px 0;border-top:1px solid var(--line)}
 @media (max-width:900px){.retainer{padding:24px}}
 .np{font-size:14px;color:var(--accent);margin-bottom:12px}
 .np b{font-weight:600}
-.ret{font-size:14px;font-weight:500;margin:-12px 0 20px}
+.ret{font-size:14px;font-weight:500;margin:-12px 0 20px;line-height:1.5}
 .ret span{color:var(--muted);font-weight:400}
 .plan li.eg{padding-left:44px;color:var(--muted);font-size:14.5px;border-top:0;padding-top:2px}
 .plan li.eg::before{content:"–";left:26px;color:var(--muted);font-weight:400}
@@ -234,3 +234,8 @@ section{padding:88px 0;border-top:1px solid var(--line)}
 .form-status{font-size:14px;color:var(--accent);min-height:1.2em}
 .form-status.err{color:#a3341d}
 .btn:disabled{opacity:.6;cursor:default}
+.plan li b{font-weight:600}
+.promise{margin-top:20px;border:1px solid var(--line);border-radius:var(--radius);padding:28px 32px;background:var(--surface)}
+.promise h3{font-size:20px;margin-bottom:8px}
+.promise p{color:#3b3a36;font-size:15.5px;max-width:760px}
+@media (max-width:900px){.promise{padding:24px}}
