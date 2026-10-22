@@ -21,7 +21,7 @@ Put these in `images/` (JPG, ~2000px wide max, under ~400 KB each):
 - `profile.jpg` (portrait, 4:5)
 - `services.jpg` (a site you've built, 16:9)
 - `client1.jpg` – `client3.jpg` (client work, 16:10)
-- `project1.jpg` – `project3.jpg` (16:10)
+- `project1.jpg` – `project6.jpg` (16:10)
 - `gallery1.jpg` – `gallery5.jpg` (gallery1 is the wide one)
 - `og.jpg`, `og-services.jpg` (1200×630, used when links are shared)
 
