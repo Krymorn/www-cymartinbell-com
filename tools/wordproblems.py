@@ -525,6 +525,11 @@ def solve_percent(text):
 # ============================================================
 # 4. Rates: work together, proportions
 # ============================================================
+def solve_rates_together(text):
+    low = words_to_numbers(text.lower()).replace(',', '')
+    return solve_rates(text) if re.search(r'together|working together|both work|at the same time|combined', low) else None
+
+
 def solve_rates(text):
     low = words_to_numbers(text.lower()).replace(',', '')
     if re.search(r'together|working together|both work|at the same time|combined', low):
@@ -779,9 +784,411 @@ def solve_story(text):
 
 
 # ============================================================
+# 7. More story-problem templates (added after real-world testing)
+# ============================================================
+_NUMRE = r'(\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?)'
+
+
+def _numval(s):
+    s = s.strip()
+    m = re.fullmatch(r'(\d+)\s+(\d+)/(\d+)', s)
+    if m:
+        return int(m.group(1)) + int(m.group(2)) / int(m.group(3))
+    return _num(s)
+
+
+def _sing(w):
+    w = (w or '').lower()
+    for a, b in (('ies', 'y'), ('ches', 'ch'), ('shes', 'sh'), ('xes', 'x'), ('es', 'e'), ('s', '')):
+        if w.endswith(a) and len(w) > len(a) + 2:
+            return w[:-len(a)] + b
+    return w
+
+
+def _ans(title, text, steps=None, interp='', label='Word problem', extra=None):
+    pod = {'title': title, 'big': True, 'text': text}
+    if steps:
+        pod['steps'] = steps
+    return {'input': None, 'label': label, 'interp': interp, 'pods': [pod] + (extra or [])}
+
+
+def _sol_steps(eqs, sol):
+    st = [{'rule': 'Write an equation for each fact', 'latex': r' \\ '.join(sp.latex(e) for e in eqs)}]
+    st.append({'rule': 'Solve the equations together', 'latex': r',\quad '.join('%s = %s' % (sp.latex(k), sp.latex(v)) for k, v in sol.items())})
+    return st
+
+
+# --- two kinds of item: tickets, coins, mixtures ---------------------------------------------
+_COINS = {'penny': 0.01, 'pennies': 0.01, 'nickel': 0.05, 'nickels': 0.05, 'dime': 0.10, 'dimes': 0.10, 'quarter': 0.25, 'quarters': 0.25}
+
+
+def solve_two_items(text):
+    low = words_to_numbers(text.lower()).replace(',', '')
+    prices = []
+    for m in re.finditer(r'\b([a-z]+)(?:\s+([a-z]+))?\s+(?:cost|costs|are|is|sell for|sells for|go for|priced at|cost us)\s+\$(\d+(?:\.\d+)?)', low):
+        name = m.group(1) if m.group(1) not in ('the', 'a', 'an', 'and') else m.group(2)
+        prices.append((name, float(m.group(3)), m.span()))
+    for m in re.finditer(r'\$(\d+(?:\.\d+)?)\s+(?:for|per|each for)\s+(?:an?\s+|each\s+|every\s+)?([a-z]+)', low):
+        prices.append((m.group(2), float(m.group(1)), m.span()))
+    coins = [w for w in re.findall(r'\b(pennies|penny|nickels?|dimes?|quarters?)\b', low)]
+    if len({_sing(c) for c in coins}) == 2 and len(prices) < 2:
+        cs = []
+        for c in coins:
+            if _sing(c) not in [_sing(x) for x, _, _ in cs]:
+                cs.append((c, _COINS[c], (0, 0)))
+        prices = cs
+    names = []
+    for n, p, sp_ in prices:
+        if _sing(n) not in [_sing(x[0]) for x in names]:
+            names.append((n, p, sp_))
+    if len(names) != 2:
+        return None
+    used = set()
+    for _, _, (a, b) in names:
+        used.update(range(a, b))
+    count = money = None
+    for m in re.finditer(r'(\$)?(\d+(?:\.\d+)?)(\s*(?:dollars|cents))?', low):
+        if m.start() in used or m.start(2) in used:
+            continue
+        v = float(m.group(2))
+        if m.group(1) or (m.group(3) and 'dollar' in m.group(3)):
+            money = v if money is None else money
+        elif m.group(3) and 'cent' in m.group(3):
+            money = v / 100 if money is None else money
+        elif count is None:
+            count = v
+    if count is None or money is None:
+        return None
+    (n1, p1, _), (n2, p2, _) = names
+    a, b = Symbol(_sing(n1) or 'a'), Symbol(_sing(n2) or 'b')
+    eqs = [Eq(a + b, int(count) if count == int(count) else count), Eq(sp.nsimplify(p1) * a + sp.nsimplify(p2) * b, sp.nsimplify(money))]
+    sol = sp.solve(eqs, [a, b], dict=True)
+    if not sol:
+        return None
+    sol = sol[0]
+    q = re.search(r'how many\s+([a-z]+)', low)
+    ask = None
+    if q:
+        for s_ in (a, b):
+            if _sing(q.group(1)).startswith(s_.name[:4]) or s_.name.startswith(_sing(q.group(1))[:4]):
+                ask = s_
+    bad = any(v < 0 or not v.is_integer for v in sol.values())
+    noun = (re.search(r'how many\s+[a-z]+\s+([a-z]+)\s+(?:were|are|did|do|does|was)', low) or [None, ''])[1]
+    text_ = ('%s %s%s' % (sol[ask], n1 if ask == a else n2, (' ' + noun) if noun else '')) if ask is not None else ', '.join('%s %s' % (sol[s_], nm) for s_, nm in ((a, n1), (b, n2)))
+    extra = [{'title': 'Both amounts', 'table': [[n1, str(sol[a])], [n2, str(sol[b])]]}]
+    if bad:
+        extra.append({'title': 'Heads up', 'text': 'The answer isn’t a whole, positive number, so check the numbers in the problem.'})
+    return _ans('Answer', text_, _sol_steps(eqs, sol), 'Two kinds of item (system of equations)', extra=extra)
+
+
+# --- ages ------------------------------------------------------------------------------------
+_MULT = {'twice': 2, 'double': 2, 'thrice': 3, 'triple': 3, 'half': Rational(1, 2), '1/2': Rational(1, 2)}
+
+
+def _mult(s):
+    m = re.search(r'(\d+(?:\.\d+)?|\d+/\d+)\s+times', s)
+    if m:
+        return sp.nsimplify(_numval(m.group(1)))
+    for k, v in _MULT.items():
+        if re.search(r'\b%s\b' % re.escape(k), s):
+            return v
+    return None
+
+
+def _offset(s):
+    m = re.search(r'in\s+(\d+)\s+years?|(\d+)\s+years?\s+from now', s)
+    if m:
+        return int(m.group(1) or m.group(2))
+    m = re.search(r'(\d+)\s+years?\s+ago', s)
+    if m:
+        return -int(m.group(1))
+    return 0
+
+
+def solve_ages(text):
+    low = words_to_numbers(text).replace(',', '')
+    if not re.search(r'\bold\b|\bage', low, re.I):
+        return None
+    sents = [s for s in re.split(r'(?<=[.?!])\s+', low) if s.strip()]
+    skip = {'In', 'How', 'What', 'The', 'If', 'When', 'Then', 'Now', 'Find', 'She', 'He', 'They', 'Her', 'His', 'Their', 'Years', 'Ago', 'Together', 'Combined'}
+    people = []
+    for w in re.findall(r'\b[A-Z][a-z]+\b', low):
+        if w not in skip and w not in people:
+            people.append(w)
+    if not people:
+        people = ['x']
+    sym = {p: Symbol(p) for p in people}
+    last = [people[0]]
+
+    def who(s):
+        found = [p for p in people if re.search(r'\b%s\b' % p, s)]
+        if found:
+            last[0] = found[-1]
+            return found
+        return [last[0]]
+
+    eqs = []
+    for s in sents:
+        if '?' in s or re.match(r'\s*(?:how|what|find)', s, re.I):
+            continue
+        sl = s.lower()
+        off_all = _offset(sl)
+        m = re.search(r'(.*?)\b(\d+)\s+years?\s+(older|younger)\s+than\s+(.*)', s)
+        if m and len(people) >= 2:
+            a = who(m.group(1))[0]; b_ = [p for p in people if re.search(r'\b%s\b' % p, m.group(4))] or [p for p in people if p != a]
+            sign = 1 if m.group(3) == 'older' else -1
+            eqs.append(Eq(sym[a], sym[b_[0]] + sign * int(m.group(2)))); continue
+        m = re.search(r'sum of (?:their|the) ages\D*(\d+)|(?:together|combined),? they (?:are|will be)\D*(\d+)|ages add up to (\d+)', sl)
+        if m and len(people) >= 2:
+            eqs.append(Eq(sum(sym[p] + off_all for p in people), int(next(g for g in m.groups() if g)))); continue
+        if ' as old as ' in sl:
+            left, right = sl.split(' as old as ', 1)
+            k = _mult(left)
+            if k is None:
+                continue
+            lp = who(s.split(' as old as ')[0])[0]
+            rp_ = [p for p in people if re.search(r'\b%s\b' % p, s.split(' as old as ')[1])]
+            rp = rp_[0] if rp_ else lp
+            if rp == lp and len(people) >= 2 and not re.search(r'\b(?:she|he|they)\s+(?:was|is|will)', right):
+                rp = [p for p in people if p != lp][0]
+            ol = _offset(left)
+            orr = _offset(right) if re.search(r'\d+\s+years?\s+ago|in\s+\d+\s+years?', right) else (ol if rp != lp else 0)
+            eqs.append(Eq(sym[lp] + ol, k * (sym[rp] + orr))); continue
+        m = re.search(r'\b([A-Z][a-z]+)\s+is\s+(\d+)(?:\s+years?\s+old)?\s*[.,]?$', s.strip().rstrip('.'))
+        if m and m.group(1) in sym:
+            eqs.append(Eq(sym[m.group(1)], int(m.group(2))))
+    if not eqs:
+        return None
+    vs = sorted(set().union(*[e.free_symbols for e in eqs]), key=lambda v: v.name)
+    if len(vs) > len(eqs):
+        return None
+    sol = sp.solve(eqs, vs, dict=True)
+    if not sol:
+        return None
+    sol = sol[0]
+    q = sents[-1]
+    asked = [p for p in people if re.search(r'\b%s\b' % p, q)] or people
+    fut = _offset(q.lower())
+    txt = ', '.join('%s is %s%s' % (p if p != 'x' else 'The person', sol.get(sym[p], '?'), (' now' if not fut else '')) for p in asked if sym[p] in sol)
+    if fut:
+        txt += ' (in %d years: %s)' % (fut, ', '.join(str(sol[sym[p]] + fut) for p in asked if sym[p] in sol))
+    return _ans('Answer', txt, _sol_steps(eqs, sol), 'Age problem', extra=[{'title': 'How', 'text': 'Each age is a variable for its age now. “In N years” adds N and “N years ago” subtracts N.'}])
+
+
+# --- general proportion: two quantities given, a third asked ------------------------------------
+_TIMEU = {'second': 1, 'sec': 1, 'minute': 60, 'min': 60, 'hour': 3600, 'hr': 3600, 'day': 86400, 'week': 604800}
+
+
+def _qtys(s):
+    out = []
+    for m in re.finditer(r'(\$\s?)?' + _NUMRE + r'(?:\s*(%)|\s*-?\s*([a-z]+)(?:\s+of\s+([a-z]+))?)?', s):
+        if m.group(3):
+            continue
+        unit = '$' if m.group(1) else (m.group(4) or '')
+        if unit in ('and', 'or', 'more', 'times', 'than', 'then', 'is', 'are', 'for', 'in', 'to', 'of', 'each', 'per', 'a', 'the', 'percent'):
+            unit = ''
+        out.append((_numval(m.group(2)), _sing(unit), m.group(5) or '', unit))
+    return out
+
+
+def solve_proportion(text):
+    low = words_to_numbers(text.lower()).replace(',', '')
+    if '%' in low or 'percent' in low or re.search(r'together|both work|downstream|upstream', low):
+        return None
+    parts = re.split(r'(?<=[.?!])\s+|,\s*(?=how|what)', low)
+    qi = [i for i, p in enumerate(parts) if '?' in p or re.match(r'\s*(?:how|what|find)', p)]
+    if not qi:
+        return None
+    given = ' '.join(parts[:qi[-1]]) or parts[qi[-1]].split('how')[0]
+    ques = parts[qi[-1]]
+    g, qq = _qtys(given), _qtys(ques)
+    if len(g) != 2 or len(qq) != 1 or not re.search(r'how (?:much|many|long|far)|what|find', ques):
+        return None
+    (n1, u1, s1, r1), (n2, u2, s2, r2) = g
+    n3, u3, s3, r3 = qq[0]
+    if not u3 and not u1 and not u2:
+        return None
+    match = lambda a, b: a and b and (a == b or a[:4] == b[:4])
+    if match(u3, u2) and not match(u3, u1):
+        (n1, u1, s1, r1), (n2, u2, s2, r2) = (n2, u2, s2, r2), (n1, u1, s1, r1)
+    elif not match(u3, u1):
+        return None
+    ans = n2 / n1 * n3
+    unit = u2 if u2 == '$' else (r2 if abs(ans - 1) > 1e-12 and r2.endswith('s') else u2)
+    conv = re.search(r'\bin\s+(seconds?|minutes?|hours?|days?)\b', ques)
+    if conv and _sing(u2) in _TIMEU and _sing(conv.group(1)) in _TIMEU and _sing(conv.group(1)) != _sing(u2):
+        ans = ans * _TIMEU[_sing(u2)] / _TIMEU[_sing(conv.group(1))]
+        unit = _sing(conv.group(1)) + ('s' if abs(ans - 1) > 1e-12 else '')
+    frac = sp.nsimplify(ans, rational=True) if abs(ans * 48 - round(ans * 48)) < 1e-9 else None
+    pl = '' if abs(ans - 1) < 1e-12 or unit in ('$',) else 's'
+    if unit == '$':
+        val = '$%.2f' % ans
+    else:
+        val = '%s %s%s%s' % (_fmt(ans, 6), unit, pl if unit and not unit.endswith('s') else '', (' of ' + s2) if s2 else '')
+        val = val.replace(' ', ' ', 1)
+        if frac is not None and not frac.is_Integer and '/' in given:
+            whole, rem = divmod(frac.p, frac.q)
+            val += '  (= %s%s/%s)' % ('%d ' % whole if whole else '', rem, frac.q)
+    show = lambda n, u: ('$%s' % _fmt(n)) if u == '$' else '%s %s' % (_fmt(n), u)
+    steps = [{'rule': 'Find the amount for one %s' % (r1[:-1] if r1.endswith('s') and n1 != 1 else r1 or u1), 'latex': r'\frac{%s}{%s} = %s \text{ per %s}' % (_fmt(n2), _fmt(n1), _fmt(n2 / n1, 6), u1)},
+             {'rule': 'Multiply by %s' % show(n3, r3 or u1), 'latex': r'%s \times %s = %s' % (_fmt(n2 / n1, 6), _fmt(n3), _fmt(n2 / n1 * n3, 6))}]
+    if conv and unit != u2:
+        steps.append({'rule': 'Convert %ss to %s' % (u2, unit), 'latex': r'%s \text{ %ss} = %s \text{ %s}' % (_fmt(n2 / n1 * n3, 6), u2, _fmt(ans, 6), unit)})
+    return _ans('Answer', val.strip(), steps, 'Proportion (scale %s → %s)' % (show(n1, r1 or u1), show(n3, r3 or u1)))
+
+
+# --- percent stacking and compound interest ---------------------------------------------------
+_FREQ = {'annually': 1, 'yearly': 1, 'annual': 1, 'semiannually': 2, 'semi-annually': 2, 'quarterly': 4, 'monthly': 12, 'weekly': 52, 'daily': 365}
+
+
+def solve_money_more(text):
+    low = text.lower().replace(',', '')
+    offs = re.findall(r'(\d+(?:\.\d+)?)\s*(?:%|percent)\s*(?:off|discount)', low)
+    pm = re.search(r'\$\s?(\d+(?:\.\d+)?)', low)
+    if len(offs) >= 2 and pm:
+        price = cur = float(pm.group(1))
+        rows, steps = [['Original price', '$%.2f' % price]], []
+        for o in offs:
+            o = float(o)
+            new = cur * (1 - o / 100)
+            rows.append(['%s%% off $%.2f' % (_fmt(o), cur), '−$%.2f → $%.2f' % (cur - new, new)])
+            steps.append({'rule': 'Take %s%% off $%.2f' % (_fmt(o), cur), 'latex': r'%.2f \times (1 - %s) = %.2f' % (cur, _fmt(o / 100), new)})
+            cur = new
+        tax = re.search(r'(\d+(?:\.\d+)?)\s*(?:%|percent)\s*(?:sales\s+)?tax', low)
+        if tax:
+            t = float(tax.group(1)); new = cur * (1 + t / 100)
+            rows.append(['Tax %s%%' % _fmt(t), '+$%.2f → $%.2f' % (new - cur, new)]); cur = new
+        tot = 1 - cur / price
+        return _ans('Final price', '$%.2f' % cur, steps, 'Discounts applied one after another', label='Percent', extra=[
+            {'title': 'Working', 'table': rows},
+            {'title': 'Note', 'text': 'Stacked discounts don’t add: together they take %s%% off, not %s%%.' % (_fmt(tot * 100, 4), _fmt(sum(float(o) for o in offs)))}])
+    if 'compound' in low:
+        P_ = re.search(r'\$\s?(\d+(?:\.\d+)?)|(?:invest(?:s|ed)?|deposit(?:s|ed)?|principal of|borrow(?:s|ed)?|loan of)\s+\$?(\d+(?:\.\d+)?)', low)
+        r_ = re.search(r'(\d+(?:\.\d+)?)\s*(?:%|percent)', low)
+        t_ = re.search(r'(\d+(?:\.\d+)?)\s*(years?|months?)', low)
+        if not (P_ and r_ and t_):
+            return None
+        P0 = float(P_.group(1) or P_.group(2)); r = float(r_.group(1)) / 100
+        t = float(t_.group(1)) / (12 if t_.group(2).startswith('month') else 1)
+        cont = 'continuous' in low
+        n = next((v for k, v in _FREQ.items() if k in low), 1)
+        A = P0 * math.exp(r * t) if cont else P0 * (1 + r / n) ** (n * t)
+        f = r'A = Pe^{rt} = %s e^{%s \cdot %s}' % (_fmt(P0), _fmt(r), _fmt(t)) if cont else r'A = P\left(1 + \frac{r}{n}\right)^{nt} = %s\left(1 + \frac{%s}{%d}\right)^{%d \cdot %s}' % (_fmt(P0), _fmt(r), n, n, _fmt(t))
+        return _ans('Amount after %s %s' % (_fmt(t_.group(1)), t_.group(2)), '$%.2f' % A, [{'rule': 'Compound interest formula', 'latex': f + r' = %.2f' % A}],
+                    'Compound interest, %s' % ('continuously' if cont else {1: 'yearly', 2: 'twice a year', 4: 'quarterly', 12: 'monthly', 52: 'weekly', 365: 'daily'}[n]), label='Interest',
+                    extra=[{'title': 'Interest earned', 'text': '$%.2f' % (A - P0)}, {'title': 'Compared with simple interest', 'text': '$%.2f' % (P0 * r * t)}])
+    return None
+
+
+# --- working backwards: "had some, gave away half and 6 more, left with 10" -------------------
+def solve_backwards(text):
+    low = words_to_numbers(text.lower()).replace(',', ' , ')
+    st = re.search(r'\b(?:had|has|have|started with|starts with|begins? with|began with|brought|took)\s+(?:some|a certain number of|an unknown number of|a number of|some number of)\b', low)
+    if not st and not re.search(r'start(?:ed)? with|at first|originally|in the beginning', low):
+        return None
+    x = Symbol('x'); cur = x; direction = None; final = None; steps = []
+    body = low[st.end():] if st else low
+    for cl in re.split(r',|\bthen\b|\band\b|\.|;', body):
+        cl = cl.strip()
+        if not cl:
+            continue
+        m = re.search(r'(?:leaving|left with|has|had|have|now has|there (?:are|were)|was left with|ended up with|remaining|remains?)\s+(?:only\s+|just\s+)?\$?(\d+(?:\.\d+)?)(?:\s+(?:left|remaining))?', cl)
+        if m and re.search(r'leav|left|now|remain|ended', cl):
+            final = float(m.group(1)); break
+        if '?' in cl or re.match(r'(?:how|what)', cl):
+            continue
+        g = re.search(r'\b(?:%s)\b' % _GIVE, cl); t = re.search(r'\b(?:%s)\b' % _GET, cl)
+        if t and t.group(0) in ('more', 'another') and not g and direction and not re.search(r'\b(?:got|gets|bought|buys|found|finds|received|earned|won|added|picked|collected)\b', cl):
+            t = None; g = None
+        d = ('-' if g and (not t or g.start() < t.start()) else '+') if (g or t) else direction
+        if d is None:
+            continue
+        am = re.search(r'(\d+/\d+)(?:\s+of)?|(\d+(?:\.\d+)?)\s*(?:%|percent)|\$?(\d+(?:\.\d+)?)', cl)
+        if not am:
+            continue
+        direction = d
+        if am.group(1) or am.group(2):
+            f = sp.nsimplify(am.group(1)) if am.group(1) else sp.nsimplify(am.group(2)) / 100
+            new = cur - f * cur if d == '-' else cur + f * cur
+            steps.append('%s %s of what was there' % ('Remove' if d == '-' else 'Add', am.group(1) or am.group(2) + '%'))
+        else:
+            v = sp.nsimplify(am.group(3))
+            new = cur - v if d == '-' else cur + v
+            steps.append('%s %s' % ('Take away' if d == '-' else 'Add', am.group(3)))
+        cur = sp.simplify(new)
+    if final is None or cur == x or not steps:
+        return None
+    eq = Eq(cur, sp.nsimplify(final))
+    sol = sp.solve(eq, x)
+    if not sol:
+        return None
+    v = sol[0]
+    return _ans('Started with', _fmt(v), [{'rule': 'Call the starting amount x and follow the story: ' + ' → '.join(steps), 'latex': sp.latex(eq)},
+                                           {'rule': 'Solve for x', 'latex': 'x = %s' % sp.latex(v)}], 'Working backwards (equation)',
+                extra=[{'title': 'Check', 'text': 'Start with %s, follow each step, and you end with %s.' % (_fmt(v), _fmt(cur.subs(x, v)))}])
+
+
+# --- with/against a current or wind -------------------------------------------------------------
+def solve_current(text):
+    low = words_to_numbers(text.lower()).replace(',', '')
+    dn = re.search(r'downstream|with the (?:current|wind)|tailwind', low)
+    up = re.search(r'upstream|against the (?:current|wind)|headwind|into the wind', low)
+    if not (dn and up):
+        return None
+    dist = [(float(m.group(1)), m.start()) for m in re.finditer(r'(\d+(?:\.\d+)?)\s*(?:miles?|mi|km|kilometers?|kilometres?|meters?|m)\b', low)]
+    times = [(float(m.group(1)), m.start()) for m in re.finditer(r'(\d+(?:\.\d+)?)\s*(?:hours?|hrs?|h)\b', low)]
+    unit = (re.search(r'\d\s*(miles?|mi|km|kilometers?|meters?|m)\b', low).group(1)) if dist else ''
+    if not dist or len(times) < 2:
+        return None
+    d1 = dist[0][0]; d2 = dist[1][0] if len(dist) > 1 else d1
+    pairs = sorted([(dn.start(), 'down'), (up.start(), 'up')])
+    order = [p[1] for p in pairs]
+    sp_ = {order[0]: (d1 / times[0][0]), order[1]: (d2 / times[1][0])}
+    b, c = Symbol('b'), Symbol('c')
+    eqs = [Eq(b + c, sp.nsimplify(sp_['down'])), Eq(b - c, sp.nsimplify(sp_['up']))]
+    sol = sp.solve(eqs, [b, c], dict=True)[0]
+    su = {'mi': 'mph', 'mile': 'mph', 'miles': 'mph', 'km': 'km/h'}.get(unit, '%s per hour' % unit)
+    what = 'wind' if 'wind' in low else 'current'
+    vehicle = 'plane' if 'wind' in low else 'boat'
+    asks_c = re.search(r'speed of the (?:current|wind|stream|river)|(?:current|wind)\'?s? speed|how fast is the (?:current|wind)', low)
+    main = ('%s %s' % (_fmt(sol[c]), su)) if asks_c else ('%s %s' % (_fmt(sol[b]), su))
+    return _ans('Speed of the %s' % what if asks_c else 'Speed of the %s in still %s' % (vehicle, 'air' if what == 'wind' else 'water'), main,
+                [{'rule': 'Speed with the %s = %s + %s; against it = %s − %s' % (what, vehicle, what, vehicle, what), 'latex': r'b + c = %s,\quad b - c = %s' % (_fmt(sp_['down']), _fmt(sp_['up']))},
+                 {'rule': 'Add and subtract the two equations', 'latex': r'b = %s,\quad c = %s' % (_fmt(sol[b]), _fmt(sol[c]))}],
+                'Speed with and against a %s' % what, extra=[{'title': 'Both speeds', 'table': [['%s (still %s)' % (vehicle.title(), 'air' if what == 'wind' else 'water'), '%s %s' % (_fmt(sol[b]), su)], [what.title(), '%s %s' % (_fmt(sol[c]), su)]]}])
+
+
+# --- division that must round: buses, boxes, rows -----------------------------------------------
+def solve_round_division(text):
+    low = words_to_numbers(text.lower()).replace(',', '')
+    nums = [float(m) for m in re.findall(r'\d+(?:\.\d+)?', low)]
+    if len(nums) != 2:
+        return None
+    q = low[low.rfind('.', 0, low.find('?')) + 1:] if '?' in low else low
+    qn = re.search(r'how many\s+(?:full\s+|complete\s+|whole\s+)?([a-z]+)', q)
+    if not qn:
+        return None
+    cont = [m.group(1) for m in re.finditer(r'\b(?:each|every|one|a|per)\s+([a-z]+)\s+(?:holds?|fits?|seats?|carries|can (?:hold|carry|take|seat|fit))', low)]
+    cont += [m.group(1) for m in re.finditer(r'\b([a-z]+)\s+of\s+\d', low)]
+    cont += [m.group(1) for m in re.finditer(r'\b\d+\s+(?:\w+\s+)?(?:per|in each|to a|for each)\s+([a-z]+)', low)]
+    if not any(_sing(c)[:3] == _sing(qn.group(1))[:3] for c in cont) and not re.search(r'left over|leftover', q):
+        return None
+    big_, small = max(nums), min(nums)
+    whole, rem = divmod(big_, small)
+    noun = (re.search(r'how many\s+(?:full\s+)?(\w+)', q) or [None, ''])[1]
+    if re.search(r'left over|leftover|remain|extra', q):
+        return _ans('Left over', _fmt(rem), [{'rule': 'Divide and keep the remainder', 'latex': r'%s \div %s = %s \text{ R } %s' % (_fmt(big_), _fmt(small), _fmt(whole), _fmt(rem))}], 'Division with remainder')
+    if re.search(r'full|complete|can (?:be )?(?:made|filled|fill|make)|how many .*can', q) and not re.search(r'needed|need|required|take', q):
+        n_ = whole; why = 'Only complete groups count, so round down.'
+    else:
+        n_ = whole + (1 if rem else 0); why = 'Everyone has to fit, so round up%s.' % ((' (the last %s has only %s)' % (_sing(noun) or 'one', _fmt(rem))) if rem else '')
+    return _ans('Answer', '%s %s' % (_fmt(n_), noun), [{'rule': 'Divide', 'latex': r'%s \div %s = %s' % (_fmt(big_), _fmt(small), _fmt(big_ / small, 6))}, {'rule': why, 'latex': _fmt(n_)}], 'Division, rounded to make sense')
+
+
+# ============================================================
 # Entry point
 # ============================================================
-SOLVERS = [('formula', solve_formula), ('geometry', solve_geometry), ('percent', solve_percent), ('rates', solve_rates), ('algebra', solve_algebra), ('story', solve_story)]
+SOLVERS = [('current', solve_current), ('two_items', solve_two_items), ('ages', solve_ages), ('money', solve_money_more), ('backwards', solve_backwards), ('round_division', solve_round_division), ('formula', solve_formula), ('geometry', solve_geometry), ('percent', solve_percent), ('rates_together', solve_rates_together), ('proportion', solve_proportion), ('rates', solve_rates), ('algebra', solve_algebra), ('story', solve_story)]
 
 
 def op_wordproblem(req):
@@ -832,5 +1239,44 @@ def op_check(req):
     return {'input': r', '.join(sp.latex(r) for r in rels), 'pods': pods}
 
 
+def op_features(req):
+    """Vertex, intercepts, axis of symmetry, domain/range, extrema of a function of x."""
+    f = P(req['expr'])
+    v = sorted(f.free_symbols, key=lambda s_: s_.name)
+    x = v[0] if v else Symbol('x')
+    rows, pods = [], []
+    try:
+        poly = sp.Poly(sp.expand(f), x)
+        deg = poly.degree()
+    except Exception:
+        poly, deg = None, None
+    if deg == 2:
+        a, b, c = poly.all_coeffs()
+        h = sp.nsimplify(-b / (2 * a)); k = sp.simplify(f.subs(x, h))
+        pods.append({'title': 'Vertex', 'big': True, 'latex': r'\left(%s,\ %s\right)' % (sp.latex(h), sp.latex(k)), 'text': '(%s, %s)' % (h, k),
+                     'steps': [{'rule': 'For ax² + bx + c the vertex is at x = −b/(2a)', 'latex': r'x = -\frac{%s}{2 \cdot %s} = %s' % (sp.latex(b), sp.latex(a), sp.latex(h))},
+                               {'rule': 'Plug that x back in to get y', 'latex': r'y = %s' % sp.latex(k)}]})
+        rows += [['Axis of symmetry', 'x = %s' % h], ['Opens', 'upward (minimum at the vertex)' if a > 0 else 'downward (maximum at the vertex)'],
+                 ['Vertex form', sp.sstr(sp.Mul(a, (x - h) ** 2, evaluate=False) + k if a != 1 else (x - h) ** 2 + k).replace('**', '^')], ['Range', 'y ≥ %s' % k if a > 0 else 'y ≤ %s' % k]]
+    roots = sp.solve(f, x)
+    rows += [['x-intercepts (roots)', ', '.join('(%s, 0)' % sp.sstr(r_) for r_ in roots if r_.is_real) or 'none (no real roots)'], ['y-intercept', '(0, %s)' % sp.sstr(f.subs(x, 0))]]
+    try:
+        dom = sp.calculus.util.continuous_domain(f, x, sp.S.Reals)
+        rows.append(['Domain', sp.sstr(dom).replace('Reals', 'all real numbers')])
+    except Exception:
+        pass
+    if deg != 2:
+        crit = [c_ for c_ in sp.solve(sp.diff(f, x), x) if c_.is_real]
+        if crit:
+            rows.append(['Turning points', ', '.join('(%s, %s)' % (sp.sstr(c_), sp.sstr(sp.simplify(f.subs(x, c_)))) for c_ in crit[:6])])
+    pods.append({'title': 'Features', 'table': rows})
+    try:
+        pods.append(plot_pod(plot2d([f], x, roots=[float(r_) for r_ in roots if r_.is_real])))
+    except Exception:
+        pass
+    return {'input': sp.latex(f), 'pods': pods}
+
+
+OPS['features'] = op_features
 OPS['wordproblem'] = op_wordproblem
 OPS['check'] = op_check

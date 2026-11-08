@@ -4,6 +4,7 @@ import * as S from './sources.js';
 import * as S2 from './sources2.js';
 import * as F from './files.js';
 import { EXTRA_RULES } from './extras.js';
+import { MORE_RULES, cleanTopic, placeAlias } from './more.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -229,6 +230,10 @@ function parseDate(s, { future = false } = {}) {
   if (t === 'winter') return pick(yy => new Date(yy, 11, 21));
   if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(t)) { const [a, b, c] = t.split('-').map(Number); return new Date(a, b - 1, c); }
   if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(t)) { let [a, b, c] = t.split('/').map(Number); if (c < 100) c += 2000; return new Date(c, a - 1, b); }
+  const wdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const wm = /^(?:(next|this|last)\s+)?(sun|mon|tues?|wed(?:nes)?|thu(?:rs)?|fri|sat(?:ur)?)(?:day)?$/.exec(t);
+  if (wm) { const target = wdays.findIndex(w => w.startsWith(wm[2].slice(0, 3))); let add = (target - today.getDay() + 7) % 7; if (wm[1] === 'next' && add === 0) add = 7; if (wm[1] === 'last') add = add - 7 || -7; return new Date(+today + add * DAY); }
+  if (!/\d|\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/.test(t)) return null;
   const hasYear = /\b\d{4}\b/.test(t);
   const d = new Date(hasYear ? t : `${t} ${y}`);
   if (isNaN(d)) return null;
@@ -418,15 +423,15 @@ async function universal(ctx, q, keepLabel) {
 const EXAMPLES = [
   ['Math', ['integrate x^2 sin x', 'derivative of x^3 e^x', 'solve x^2 + 2x - 8 = 0', "y'' + 3y' + 2y = 0, y(0)=1, y'(0)=0", 'limit sin(x)/x as x -> 0', 'plot sin x, cos x from -pi to pi', 'x^2 + y^2', 'maximize x(10-2x)', 'laplace transform of sin(3t)', 'taylor series of cos x', 'sum 1/n^2 from n=1 to oo', '[[2,1],[1,3]]', 'pi to 200 digits', '1000th prime', 'factor x^4 - 16']],
   ['Science', ['balance C3H8 + O2 -> CO2 + H2O', 'molar mass of caffeine', 'element iron', 'speed of light', 'avogadro', 'species red fox', 'exoplanets around trappist-1', 'asteroids', 'astronomy picture of the day', 'moon phase', 'normal mean 100 sd 15 between 85 and 115', 'binomial n=10 p=0.5 k>=7', 'linear fit (1,2) (2,4.1) (3,5.9) (4,8.2)', 'truth table (p and q) or not r']],
-  ['Everyday', ['10 km to miles', '3pm EST to Tokyo', 'mean 4, 8, 15, 16, 23, 42', '255 in binary', 'days until christmas', 'timer 5 minutes', 'calendar december 2026', '$100 in 1990 to 2024', '18% tip on 64.50', 'mortgage 350k at 6.5% for 30 years', 'bmi 150 lb 5\'10"', 'roll 3d6', 'random password 20', '1234567 in words', 'qr https://cymartinbell.com']],
+  ['Everyday', ['I got 87 out of 95', 'will it rain in Boston tomorrow at 3pm', 'what can I make with chicken and rice', 'how far is Boston from NYC', '10 km to miles', '3pm EST to Tokyo', 'mean 4, 8, 15, 16, 23, 42', '255 in binary', 'days until christmas', 'timer 5 minutes', 'calendar december 2026', '$100 in 1990 to 2024', '18% tip on 64.50', 'mortgage 350k at 6.5% for 30 years', 'bmi 150 lb 5\'10"', 'roll 3d6', 'random password 20', '1234567 in words', 'qr https://cymartinbell.com']],
   ['Research', ['papers on quadruped locomotion ros2', 'most cited papers on transformers', 'open access papers on vehicle recalls', 'arxiv voynich manuscript', 'pubmed caffeine sleep', 'cite 10.1038/nature14539', 'author Geoffrey Hinton', 'clinical trials for migraine', 'datasets on air pollution']],
   ['Knowledge', ['who is Ada Lovelace', 'what is photosynthesis', 'japan facts', 'population of japan', 'define serendipity', 'synonyms for happy', 'translate good morning to japanese', 'on this day', 'art by monet', 'recipe lasagna', 'nutrition banana', 'john 3:16']],
   ['Live', ['weather in Sudbury MA', 'weather in Boston on 2015-02-09', 'tides in Boston', 'time in Tokyo', 'air quality in Los Angeles', '100 usd to eur', 'bitcoin price', 'AAPL stock', 'nfl scores', 'robotics news', 'earthquakes', 'where is the iss', 'upcoming launches', 'distance from Boston to New York']],
   ['Lookups', ['5YJ3E1EA7KF317000', 'recalls 2021 tesla model 3', 'dns cymartinbell.com', 'whois github.com', 'my ip', 'CVE-2021-44228', 'vulns npm lodash 4.17.15', 'github ros2 quadruped', 'pypi sympy', 'isbn 9780441172719', 'zip 01776', 'song bohemian rhapsody']],
-  ['Word problems', ['A car accelerates from rest at 3 m/s² for 5 s. How far does it travel?', 'Three more than twice a number is 11. What is the number?', 'The sum of two numbers is 30 and their difference is 4. Find the numbers.', 'A $80 jacket is 30% off with 6% sales tax. How much do you pay?', 'What is the volume of a cylinder with radius 3 cm and height 10 cm?', 'John can paint a fence in 6 hours and Mary in 3 hours. How long together?', 'Sam has 12 apples, gives 4 to Ann and buys 7 more. How many does he have?', 'A ball is dropped from a height of 20 m. How long until it hits the ground?', 'check x=3 in 2x+3=9', '1. solve 2x+3=11\n2. derivative of x^2 sin x\n3. area of a circle with radius 4']],
-  ['Text & sources', ['explain photosynthesis', 'eli5 black holes', 'how does a transistor work', 'how tall is the eiffel tower', 'who founded tesla', 'when was MIT founded', 'what is the capital of australia', 'how old is Paul McCartney', 'https://en.wikipedia.org/wiki/Voynich_manuscript', 'https://arxiv.org/abs/1706.03762', 'Paste any long text to get its key sentences, names, places and a glossary']],
+  ['Word problems', ['Adult tickets cost $8 and kid tickets cost $5. They sold 120 tickets for $780. How many adult tickets were sold?', 'In 5 years Maya will be twice as old as she was 3 years ago. How old is she now?', '130 students ride buses that hold 40 each. How many buses are needed?', '$5,000 invested at 4% compounded monthly for 3 years', 'A car accelerates from rest at 3 m/s² for 5 s. How far does it travel?', 'Three more than twice a number is 11. What is the number?', 'The sum of two numbers is 30 and their difference is 4. Find the numbers.', 'A $80 jacket is 30% off with 6% sales tax. How much do you pay?', 'What is the volume of a cylinder with radius 3 cm and height 10 cm?', 'John can paint a fence in 6 hours and Mary in 3 hours. How long together?', 'Sam has 12 apples, gives 4 to Ann and buys 7 more. How many does he have?', 'A ball is dropped from a height of 20 m. How long until it hits the ground?', 'check x=3 in 2x+3=9', '1. solve 2x+3=11\n2. derivative of x^2 sin x\n3. area of a circle with radius 4']],
+  ['Text & sources', ['explain photosynthesis', 'difference between mitosis and meiosis', 'explain this code: for i in range(10): print(i*i)', 'what does "irony" mean in this sentence: The fire station burned down', 'find the vertex of x^2 - 4x + 3', 'eli5 black holes', 'how does a transistor work', 'how tall is the eiffel tower', 'who founded tesla', 'when was MIT founded', 'what is the capital of australia', 'how old is Paul McCartney', 'https://en.wikipedia.org/wiki/Voynich_manuscript', 'https://arxiv.org/abs/1706.03762', 'Paste any long text to get its key sentences, names, places and a glossary']],
   ['Search', ['dork robotics competition rules', 'site:edu filetype:pdf quadruped gait', 'how do penguins sleep']],
-  ['Your files', ['Drop a PDF, text, CSV or JSON file anywhere on the page, or use the 📎 button', 'summarize', 'find results', 'references', 'outline', 'page 3']],
+  ['Your files', ['Drop a PDF, text, CSV or JSON file anywhere on the page, or use the 📎 button', 'summarize', 'main idea', 'what do I need to do', 'find results', 'references', 'outline']],
   ['Code & text', ['sha256 hello world', 'base64 encode hello', 'morse hello world', 'rot13 hello', '{"a":1,"b":[1,2]}', 'regex /\\d+/ on abc123def45', 'word count the quick brown fox', '#2f5d50']],
   ['Python', ['py: import numpy as np\nnp.linalg.eig([[2,1],[1,3]])', 'py: import matplotlib.pyplot as plt\nplt.plot([1,4,9,16]); plt.title("squares")']],
 ];
@@ -434,7 +439,7 @@ const EXAMPLES = [
 function help(ctx) {
   ctx.label('Help');
   ctx.input('What you can type');
-  for (const [cat, ex] of EXAMPLES) ctx.add({ title: cat, chips: ex.filter(x => !/^(?:Drop a |Paste any )/.test(x)), note: cat === 'Your files' ? 'Drop a PDF, text, CSV or JSON file anywhere on the page, or use the 📎 button. Files are read on your device and never uploaded.' : undefined });
+  for (const [cat, ex] of EXAMPLES) ctx.add({ title: cat, chips: ex.filter(x => !/^(?:Drop a |Paste any )/.test(x)), note: cat === 'Your files' ? 'Drop a PDF, Word, PowerPoint, Excel, image or text file anywhere on the page, or use the 📎 button. Photos and scans are read with OCR. Files are read on your device and never uploaded.' : undefined });
   ctx.add({ title: 'Tips', numbered: ['Press / to jump to the search box, ↑ and ↓ to recall past queries, Shift+Enter for a new line.', 'Variables carry over: type a = 5, then a^2.', 'Every answer has a share button that copies a link to it.', 'Start with py: to run real Python (NumPy, SciPy, pandas, Matplotlib and SymPy all work).', 'Drop files onto the page: every later answer also shows matching passages from them. Files never leave your device.', 'Paste a whole homework sheet with numbered problems (1. 2. 3.) and each gets its own answer.', 'Paste a long article or essay to get key sentences, names and places, and a glossary of hard words. Paste a link to read a page.', 'Word problems are solved by rules, not AI: check the “What I found” table to confirm it read the problem correctly.', 'If nothing matches, I search the web, Wikipedia, DuckDuckGo and research papers at once.'] });
 }
 
@@ -461,12 +466,13 @@ const RULES = [
   [/^(?:read|open|summari[sz]e|analy[sz]e|fetch)?\s*(https?:\/\/\S+)$/i, (c, m) => F.addUrl(c, m[1])],
   [/^(?:summari[sz]e|tl;?dr|key points(?: of)?|main idea(?: of)?)\s*:?\s*([\s\S]{120,})$/i, (c, m) => F.analyzeText(c, m[1], { focus: 'summary' })],
   [/^(?:analy[sz]e|extract (?:info|information|names|facts|data)(?: from)?|explain|simplify|break down|define (?:the )?(?:hard )?words in)\s*(?:this|the following|text)?\s*:?\s*([\s\S]{120,})$/i, (c, m) => F.analyzeText(c, m[1])],
+  ...MORE_RULES.map(([re, fn]) => [re, (c, m, q) => fn(c, m, q, { S, S2, runEngine, engineButtons, ask, get: S.get })]),
   [/^(?:check|verify)\s+(?:if\s+|whether\s+|that\s+)?(.+?)\s+(?:is (?:a |the )?(?:solution|answer|root) (?:of|to|for)|solves|satisfies|in|for|with|using|when|where)\s+(.+)$/i, (c, m) => checkAnswer(c, m[1], m[2])],
   [/^is\s+(.+?)\s+(?:a |the )?(?:solution|answer|root) (?:of|to|for)\s+(.+)$/i, (c, m) => checkAnswer(c, m[1], m[2])],
-  [/^(?:explain like i'?m (?:5|five|a kid|a child)|eli5|simply explain|explain simply|explain in simple terms)\s*:?\s*(.{2,80})$/i, (c, m) => S.explain(c, m[1], { simple: true })],
-  [/^(?:explain in (?:depth|detail)|in-depth explanation of)\s*:?\s*(.{2,80})$/i, (c, m) => S.explain(c, m[1], { simple: false })],
-  [/^(?:explain|teach me(?: about)?|help me understand|what is the meaning of|give me an explanation of|tell me how)\s*:?\s*(?!.*[=^])(.{2,80})$/i, (c, m) => S.explain(c, m[1])],
-  [/^how (?:does|do) (?:a |an |the )?(.{2,60}) work$/i, (c, m) => S.explain(c, m[1])],
+  [/^(?:explain like i'?m (?:5|five|a kid|a child)|eli5|simply explain|explain simply|explain in simple terms)\s*:?\s*(.{2,80})$/i, (c, m) => S.explain(c, cleanTopic(m[1]), { simple: true })],
+  [/^(?:explain in (?:depth|detail)|in-depth explanation of)\s*:?\s*(.{2,80})$/i, (c, m) => S.explain(c, cleanTopic(m[1]), { simple: false })],
+  [/^(?:explain|teach me(?: about)?|help me understand|what is the meaning of|give me an explanation of|tell me how)\s*:?\s*(?!.*[=^])(.{2,80})$/i, (c, m) => S.explain(c, cleanTopic(m[1]), { simple: /like i'?m|eli5|simpl|kid/i.test(m[0]) })],
+  [/^how (?:does|do) (?:a |an |the )?(.{2,60}) work$/i, (c, m) => S.explain(c, cleanTopic(m[1]))],
   ...S.QA.map(([re, props, label]) => [re, (c, m) => (/\d{2,}|[=^]/.test(m[1]) ? false : S.directAnswer(c, props, label, m[1]))]),
   [/^(?:help|\?|what can you do|examples|commands)$/i, (c) => help(c)],
 
@@ -606,7 +612,7 @@ const RULES = [
   [/^(?:search|google|look up|lookup)\s+(.+)$/i, (c, m) => universal(c, m[1])],
 
   // calculus & algebra (symbolic engine)
-  [/^(?:plot|graph|draw|sketch|chart)\s+(.+?)(?:\s+(?:from|for|over)\s+(?:([a-z])\s*=\s*)?(-?[^\s]+)\s+to\s+(-?[^\s]+))?$/i, (c, m) => runEngine(c, { op: 'plot', exprs: splitList(m[1]), var: m[2], a: m[3], b: m[4] }, 'Plot')],
+  [/^(?:plot|graph|draw|sketch|chart)\s+(?:the\s+)?(?:graph\s+of\s+)?(?:the\s+)?(?:function\s+|parabola\s+|curve\s+)?(?:y\s*=\s*|f\(x\)\s*=\s*)?(.+?)(?:\s+(?:from|for|over)\s+(?:([a-z])\s*=\s*)?(-?[^\s]+)\s+to\s+(-?[^\s]+))?$/i, (c, m) => runEngine(c, { op: 'plot', exprs: splitList(m[1]), var: m[2], a: m[3], b: m[4] }, 'Plot')],
   [/^(?:integrate|integral(?:\s+of)?|antiderivative(?:\s+of)?|∫)\s*(.+)$/i, (c, m) => {
     let s = m[1], a, b, v;
     const fr = /\s+from\s+(.+?)\s+to\s+(.+?)$/i.exec(s);
@@ -691,13 +697,19 @@ const QUESTION = /^(?:what(?:'s| is| are| was| were)|whats|calculate|compute|eva
 const WHO = /^(?:who|what|where)\s+(?:is|are|was|were)\s+(.+)$/i;
 
 const NUMWORD = /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fifty|hundred|thousand|twice|half|double|triple|dozen)\b/i;
+const NUMWORD_G = new RegExp(NUMWORD.source, "gi");
 function looksLikeWordProblem(raw) {
   const t = raw.trim();
   const wc = t.split(/\s+/).length;
   if (wc < 6 || t.length > 1500) return false;
   if (!/\d/.test(t) && !NUMWORD.test(t)) return false;
   if (/^(?:py|python)\s*[:>]/i.test(t)) return false;
-  return /\?|\b(?:how (?:many|much|far|long|fast|high|tall|old)|what (?:is|was|will|are)|find|calculate|determine|compute|solve|work out)\b/i.test(t) || wc >= 10;
+  // Stories and articles aren't word problems: lots of sentences, dialogue, few numbers.
+  const sents = (t.match(/[.!?](?:\s|$)/g) || []).length;
+  const digits = (t.match(/\d+(?:\.\d+)?/g) || []).length;
+  if ((t.length > 420 && sents >= 5) || (/[“"].+[”"]/.test(t) && sents >= 4)) return false;
+  if (digits === 0 && (t.match(NUMWORD_G) || []).length < 2) return false;
+  return /\?|\b(?:how (?:many|much|far|long|fast|high|tall|old)|what (?:is|was|will|are)|find|calculate|determine|compute|solve|work out)\b/i.test(t) || (wc >= 8 && digits >= 2) || /\b(?:invested|compounded|interest|discount|tax|percent|%)/i.test(t);
 }
 
 async function tryWordProblem(ctx, raw) {
@@ -712,38 +724,161 @@ async function tryWordProblem(ctx, raw) {
   return true;
 }
 
-const ITEM = /^\s*(?:\(?\d{1,2}[.)]|\(?[a-h][.)]|q\s?\d{1,2}[.:)]?|problem\s+\d{1,2}[.:)]?|question\s+\d{1,2}[.:)]?|#\d{1,2})\s+/i;
-function splitHomework(raw) {
-  const lines = raw.split(/\n/);
-  const items = [];
-  for (const line of lines) {
-    if (ITEM.test(line)) items.push(line.replace(ITEM, '').trim());
-    else if (items.length && line.trim()) items[items.length - 1] += ' ' + line.trim();
+// ---------- cleaning up pasted math ----------
+// Symbols copied from PDFs, Google Docs and phones → plain math the engine reads.
+const UNI = [[/[÷]/g, '/'], [/[×✕⋅·]/g, '*'], [/[−–—]/g, '-'], [/≤/g, '<='], [/≥/g, '>='], [/≠/g, '!='], [/π/g, 'pi'], [/∞/g, 'oo'],
+  [/½/g, '(1/2)'], [/⅓/g, '(1/3)'], [/⅔/g, '(2/3)'], [/¼/g, '(1/4)'], [/¾/g, '(3/4)'], [/⅕/g, '(1/5)'], [/⅛/g, '(1/8)'],
+  [/²/g, '^2'], [/³/g, '^3'], [/⁴/g, '^4'], [/⁻¹/g, '^(-1)'], [/[“”]/g, '"'], [/[‘’]/g, "'"],
+  [/√\s*\(([^()]*)\)/g, 'sqrt($1)'], [/√\s*([A-Za-z0-9.]+)/g, 'sqrt($1)'], [/∛\s*([A-Za-z0-9.]+)/g, 'cbrt($1)']];
+function normalizeMath(t) { for (const [re, rep] of UNI) t = t.replace(re, rep); return t; }
+
+// LaTeX pasted from a worksheet or Overleaf → the plain syntax the router understands.
+function latexToPlain(t) {
+  if (!/\\[a-zA-Z]+|\$[^$]+\$/.test(t)) return t;
+  let s = t.replace(/\$\$?/g, ' ').replace(/\\left|\\right|\\displaystyle|\\,|\;|\\!|\\quad/g, ' ');
+  const brace = String.raw`\{((?:[^{}]|\{[^{}]*\})*)\}`;
+  for (let i = 0; i < 6; i++) {
+    s = s.replace(new RegExp(String.raw`\\[dt]?frac\s*` + brace + String.raw`\s*` + brace, 'g'), '(($1)/($2))')
+         .replace(new RegExp(String.raw`\\sqrt\s*\[(\d+)\]\s*` + brace, 'g'), '(($2)^(1/$1))')
+         .replace(new RegExp(String.raw`\\sqrt\s*` + brace, 'g'), 'sqrt($1)')
+         .replace(new RegExp(String.raw`\^\s*` + brace, 'g'), '^($1)')
+         .replace(new RegExp(String.raw`_\s*` + brace, 'g'), '_$1');
   }
-  return items.filter(Boolean).length >= 2 ? items.filter(Boolean) : null;
+  s = s.replace(/\(\(d\)\/\(d([a-z])\)\)\s*/g, 'derivative wrt $1 of ')
+       .replace(/\\int_?\{?([^}\s^]*)\}?\^?\{?([^}\s]*)\}?\s*(.+?)\s*\\?,?\s*d([a-z])\b/g, (m, a, b, f, v) => a && b ? `integrate ${f} from ${a} to ${b}` : `integrate ${f} d${v}`)
+       .replace(/\\lim_?\{?\s*([a-z])\s*\\to\s*([^}\s]+)\}?\s*(.+)/g, 'limit of $3 as $1 -> $2')
+       .replace(/\\sum_?\{?([a-z])\s*=\s*([^}\s]+)\}?\^\{?([^}\s]+)\}?\s*(.+)/g, 'sum $4 for $1 from $2 to $3')
+       .replace(/\\(?:cdot|times)/g, '*').replace(/\\div/g, '/').replace(/\\pm/g, '+-').replace(/\\leq?/g, '<=').replace(/\\geq?/g, '>=').replace(/\\neq/g, '!=')
+       .replace(/\\(sin|cos|tan|sec|csc|cot|ln|log|exp|arcsin|arccos|arctan|sinh|cosh|tanh)\b/g, '$1').replace(/\\pi\b/g, 'pi').replace(/\\infty/g, 'oo').replace(/\\theta/g, 'theta').replace(/\\alpha/g, 'alpha')
+       .replace(/[{}]/g, m => (m === '{' ? '(' : ')')).replace(/\\/g, ' ');
+  s = s.replace(/derivative wrt x of /, 'derivative of ').replace(/\s+/g, ' ').trim();
+  return s;
 }
 
-async function route(ctx, raw) {
+// Lines broken in the middle of an equation ("4x - 7 =\n2x + 9") are glued back together.
+function joinBroken(t) { return t.replace(/([=+\-*/^(,])[ \t]*\n\s*/g, '$1 ').replace(/\n[ \t]*(?=[=+*/^)])/g, ' '); }
+
+// "Solve for x: ..." / "Simplify:" → "solve ... for x"
+function tidyCommand(q) {
+  return q.replace(/^\s*(solve|simplify|factor|factorise|factorize|evaluate|expand|compute|calculate|differentiate|integrate|graph|plot)\s+for\s+([a-z])\s*[:,]\s*(.+)$/i, '$1 $3 for $2')
+          .replace(/^\s*(solve|simplify|factor|factorise|factorize|evaluate|expand|compute|calculate|differentiate|integrate|graph|plot|find)\s*:\s*/i, '$1 ');
+}
+
+const NUM_ITEM = /^\s*(?:\(?\d{1,2}[.)]|q\s?\d{1,2}[.:)]?|problem\s+\d{1,2}[.:)]?|question\s+\d{1,2}[.:)]?|#\d{1,2})\s+/i;
+const LET_ITEM = /^\s*\(?([a-h]|i{1,3}|iv|v)[.)]\s+/i;
+const ITEM = new RegExp(`${NUM_ITEM.source}|${LET_ITEM.source}`, 'i');
+const IMPERATIVE = /^\s*(?:solve|simplify|factor|factorise|factorize|expand|evaluate|find|compute|calculate|differentiate|integrate|graph|plot|sketch|convert|what is|how many|how much|determine|write|prove|show that|derivative|integral|limit)\b/i;
+
+// Turn a sub-part ("a) find the roots") into a full question using its stem ("For f(x) = x^2 - 4x + 3:").
+function withStem(stem, sub) {
+  const fm = /([a-zA-Z])\s*\(\s*([a-z])\s*\)\s*=\s*([^:;]+?)\s*[:.;,]?\s*$/.exec(stem);
+  const eqm = !fm && /(?:^|for|given|let|if)\s*([^:]*[=<>][^:]*?)\s*:?\s*$/i.exec(stem);
+  const expr = fm ? fm[3] : null;
+  if (expr) {
+    if (new RegExp(`\\b${fm[1]}\\s*\\(\\s*(-?[\\d.]+)\\s*\\)`).test(sub)) return sub.replace(new RegExp(`\\b${fm[1]}\\s*\\(\\s*(-?[\\d.]+)\\s*\\)`, 'g'), `(${expr}) at ${fm[2]} = $1`).replace(/^(?:find|what is|compute|calculate)\s+/i, 'evaluate ');
+    let r = sub.replace(/\b(?:the function|the graph|f\(x\)|it)\b(?!\s+of)/gi, m => (/graph/i.test(m) ? 'graph' : expr));
+    if (r === sub || !r.includes(expr)) r = `${sub.replace(/[.?]$/, '')} of ${expr}`;
+    return r;
+  }
+  if (eqm) return `${sub.replace(/[.?]$/, '')}: ${eqm[1]}`;
+  return `${stem.replace(/[:.]$/, '')}. ${sub}`;
+}
+
+function splitHomework(raw) {
+  const lines = joinBroken(raw).split(/\n/);
+  const items = [];          // {text, subs: []}
+  let header = '';
+  for (const line of lines) {
+    const tl = line.trim();
+    if (!tl) continue;
+    const isNum = NUM_ITEM.test(line), isLet = LET_ITEM.test(line);
+    if (isNum) items.push({ text: line.replace(NUM_ITEM, '').trim(), subs: [] });
+    else if (isLet && items.length) items[items.length - 1].subs.push(line.replace(LET_ITEM, '').trim());
+    else if (isLet) items.push({ text: line.replace(LET_ITEM, '').trim(), subs: [] });
+    else if (items.length) {
+      const last = items[items.length - 1];
+      if (last.subs.length) last.subs[last.subs.length - 1] += ' ' + tl; else last.text += ' ' + tl;
+    } else header += (header ? ' ' : '') + tl;
+  }
+  let out = [];
+  for (const it of items) {
+    if (it.subs.length) out.push(...it.subs.map(sb => withStem(it.text, sb)));
+    else out.push(it.text);
+  }
+  if (out.filter(Boolean).length < 2) {
+    // No numbering: problems separated by blank lines, or one per line starting with a command.
+    const blocks = joinBroken(raw).split(/\n\s*\n/).map(b => b.replace(/\s*\n\s*/g, ' ').trim()).filter(Boolean);
+    const perLine = joinBroken(raw).split(/\n/).map(l => l.trim()).filter(Boolean);
+    if (blocks.length >= 2 && blocks.every(b => b.length < 300 && (IMPERATIVE.test(b) || (b.match(/[.!?](\s|$)/g) || []).length <= 3))) { out = blocks; header = ''; }
+    else if (perLine.length >= 2 && perLine.length <= 30 && perLine.every(l => IMPERATIVE.test(l) || (mathy(l) && l.length < 120))) { out = perLine; header = ''; }
+    else return null;
+    // a leading instruction line ("Show your work.") isn't a problem
+    if (out.length > 2 && !IMPERATIVE.test(out[0]) && !mathy(out[0]) && !/\d/.test(out[0])) { header = out.shift(); }
+  }
+  out = out.filter(Boolean);
+  if (out.length < 2) return null;
+  out.header = header;
+  return out;
+}
+
+let lastQ = null;
+const FOLLOW = /^(?:and|what about|how about|and what about|same for|and for|what of|now)\s+(?:for\s+|in\s+)?(.+?)\??$/i;
+function followUp(q) {
+  const m = FOLLOW.exec(q);
+  if (!m || !lastQ || m[1].split(/\s+/).length > 5) return null;
+  const x = m[1].trim();
+  let r = lastQ.replace(/\b(of|in|for|at|about|on|from)\s+([^,?]+?)(\s+(?:in|on|at|for|from|to)\s+[^,?]+)?\??$/i, (all, prep, obj, tail) => `${prep} ${x}${tail || ''}`);
+  if (r === lastQ) { const caps = lastQ.match(/\b[A-Z][\w.'-]*(?:\s+[A-Z][\w.'-]*)*/g); if (caps && caps.length) { const last = caps[caps.length - 1]; const i = lastQ.lastIndexOf(last); r = lastQ.slice(0, i) + x + lastQ.slice(i + last.length); } }
+  if (r === lastQ) r = `${lastQ} ${x}`;
+  return r;
+}
+const TYPOS = { teh: 'the', hte: 'the', waht: 'what', wat: 'what', whta: 'what', hwo: 'how', woh: 'who', adn: 'and', nad: 'and', taht: 'that', thsi: 'this', ot: 'to', fo: 'of', si: 'is', wehre: 'where', whre: 'where', wher: 'where', whne: 'when', becuase: 'because', recieve: 'receive', definately: 'definitely', seperate: 'separate', untill: 'until', wich: 'which', thier: 'their', goverment: 'government', enviroment: 'environment', populaton: 'population', popluation: 'population', captial: 'capital', calender: 'calendar' };
+async function spellSuggest(q) {
+  let fixed = q.split(/(\s+)/).map(w => TYPOS[w.toLowerCase()] || w).join('').replace(/\bcapitol of\b/gi, 'capital of');
+  for (let i = 0; i < 3; i++) { const n = await wikiSuggest(fixed); if (!n || n === fixed.toLowerCase()) break; fixed = n; }
+  return fixed.toLowerCase() !== q.toLowerCase() ? fixed : null;
+}
+async function wikiSuggest(q) {
+  if (q.split(/\s+/).length < 2 || mathy(q) || /\d{3,}|https?:/.test(q) || q.length > 120) return null;
+  try {
+    const r = await S.get(`https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${enc(q)}&srinfo=suggestion&srlimit=1&format=json&origin=*`);
+    const sug = r.query && r.query.searchinfo && r.query.searchinfo.suggestion;
+    if (!sug || sug.toLowerCase() === q.toLowerCase()) return null;
+    const a = q.toLowerCase().split(/\s+/), b = sug.toLowerCase().split(/\s+/);
+    return a.length === b.length ? sug : null;
+  } catch (_) { return null; }
+}
+
+async function route(ctx, raw, opts = {}) {
+  raw = normalizeMath(raw);
+  if (/\\[a-zA-Z]+/.test(raw) && raw.length < 600) raw = latexToPlain(raw);
   let q = raw.trim();
   // A pasted list of problems: answer each one on its own card.
-  const hw = splitHomework(raw);
+  const hw = raw.includes('\n') ? splitHomework(raw) : null;
   if (hw && hw.length <= 30) {
     ctx.label('Homework');
     ctx.input(`${hw.length} problems, each answered below`);
-    ctx.add({ title: 'Problems', numbered: hw, note: 'Each problem gets its own answer card below this one, in order.' });
+    const rnd = /round(?:ed)? to the nearest (tenth|hundredth|thousandth|whole number|integer)/i.exec(hw.header || '');
+    ctx.add({ title: 'Problems', numbered: hw, note: 'Each problem gets its own answer card below this one, in order.' + (hw.header ? ` Instructions noted: “${hw.header}”` : '') + (rnd ? ` Round answers to the nearest ${rnd[1]} yourself from the decimals shown.` : '') });
     askMany(hw);
     return 'file';
   }
+  q = joinBroken(q);
   if (!/^(?:py|python)\s*[:>]/i.test(q)) q = q.replace(/\s+/g, ' ').replace(/\?+$/, '').replace(/([A-Za-z]{2,})[.!]+$/, '$1').trim();
+  q = tidyCommand(q);
+  const fu = followUp(q);
+  if (fu) { lastQ = fu; ctx.input(`Following up: ${fu}`); ctx.add({ title: 'Read as', text: fu, note: `Built from your last question, “${lastQ}”.` }); return route(ctx, fu, opts); }
   if (!q) return;
-  if (F.hasDocs() && await F.fileCommand(ctx, q)) return 'file';
+  const noFiles = /^web\s*:\s*/i.test(q);
+  if (noFiles) q = q.replace(/^web\s*:\s*/i, '');
+  if (!noFiles && F.hasDocs() && await F.fileCommand(ctx, q)) return 'file';
   if (looksLikeWordProblem(raw) && !mathy(q) && !/^(?:summari[sz]e|analy[sz]e|explain|translate|define|py|papers?|search|dork|cite)\b/i.test(q) && await tryWordProblem(ctx, raw)) return;
   // Long pasted prose with no specific request: analyse it and keep it as context.
   if (raw.length > 280 && (raw.match(/[.!?](\s|$)/g) || []).length >= 3 && !mathy(q) && !/^(?:py|python)\s*[:>]/i.test(q)) { F.analyzeText(ctx, raw.trim()); return 'file'; }
   // A question your own files clearly answer: show that first, then add web facts if they come.
-  if (F.strongAnswer(q)) {
+  if (!noFiles && F.strongAnswer(q)) {
     F.fileContext(ctx, q); ctx.label('Your files'); ctx.input(q);
-    try { await tryRules(ctx, q); } catch (_) {}
+    ctx.add({ title: 'Not what you meant?', buttons: [{ label: 'Answer without my files', query: `web: ${q}` }, ...engineButtons(q).slice(0, 2)] });
     return 'file';
   }
   if (await tryRules(ctx, q)) return;
@@ -754,8 +889,13 @@ async function route(ctx, raw) {
     if (mathy(rest) && await tryMath(ctx, rest)) return;
   }
   if (mathy(q) && await tryMath(ctx, q)) return;
+  // A typo? Ask Wikipedia's spelling suggester, then try once more with the fixed question.
+  if (!opts.corrected && !(F.hasDocs() && !noFiles)) {
+    const sug = await spellSuggest(q);
+    if (sug) { ctx.add({ title: 'Spelling', text: `Showing results for “${sug}”`, buttons: [{ label: `Search for “${q}” instead`, query: `web: ${q}` }] }); return route(ctx, sug, { corrected: true }); }
+  }
   // Nothing specific matched: if the user has files loaded, their own documents come first.
-  const fromFiles = F.hasDocs() && F.fileContext(ctx, q);
+  const fromFiles = !noFiles && F.hasDocs() && F.fileContext(ctx, q);
   if (fromFiles) { ctx.label('Your files'); ctx.input(q); }
   const done = (v) => (fromFiles ? 'file' : v);
   const who = WHO.exec(q);
@@ -1023,6 +1163,7 @@ async function runQuery({ card, ctx }, q) {
   card.classList.add('busy');
   try {
     const how = await route(ctx, q);
+    if (!FOLLOW.test(q.trim()) && q.length < 200 && !q.includes('\n')) lastQ = q.trim().replace(/\?+$/, '');
     if (how !== 'file' && F.hasDocs()) F.fileContext(ctx, q);
   } catch (e) {
     console.error(e);
@@ -1052,7 +1193,7 @@ function buildHome() {
     const col = h('div', 'home-col');
     col.append(h('h3', null, cat));
     if (cat === 'Text & sources') { ex.slice(0, 5).forEach(x => col.append(queryBtn(x, x))); col.append(h('span', 'home-hint', 'paste a link or long text')); grid.append(col); continue; }
-    if (cat === 'Your files') { col.append(h('p', 'note', 'Drop a PDF, text, CSV or JSON file anywhere, or use 📎. It stays on your device.')); ['summarize', 'find …', 'references'].forEach(x => col.append(h('span', 'home-hint', x))); grid.append(col); continue; }
+    if (cat === 'Your files') { col.append(h('p', 'note', 'Drop a PDF, Word file, photo or text file anywhere, or use 📎. It stays on your device.')); ['summarize', 'find …', 'references'].forEach(x => col.append(h('span', 'home-hint', x))); grid.append(col); continue; }
     ex.slice(0, 5).forEach(x => col.append(queryBtn(x, x)));
     grid.append(col);
   }

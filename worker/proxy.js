@@ -67,12 +67,15 @@ const MAX_READ = 15 * 1024 * 1024;
 async function readPage(raw) {
   let target;
   try { target = new URL(raw); } catch (_) { return json({ error: 'Bad url' }, 400); }
-  if (!/^https?:$/.test(target.protocol) || !readable(target.hostname)) return json({ error: 'Site not on the reading list' }, 403);
+  // Public Google Docs / Sheets / Slides, export links only (they redirect to googleusercontent.com).
+  const gdoc = target.hostname === 'docs.google.com' && /^\/(?:document|spreadsheets|presentation)\/d\/[\w-]+\/export/.test(target.pathname);
+  if (!/^https?:$/.test(target.protocol) || !(gdoc || readable(target.hostname))) return json({ error: 'Site not on the reading list' }, 403);
   const r = await fetch(target.toString(), { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (compatible; cymartinbell.com-tools/1.0; reader)', 'Accept': 'text/html,application/xhtml+xml,application/pdf,text/plain;q=0.9,*/*;q=0.5' }, cf: { cacheTtl: 3600, cacheEverything: true } });
   const finalHost = new URL(r.url).hostname;
-  if (!readable(finalHost)) return json({ error: 'Redirected off the reading list' }, 403);
+  if (gdoc && /accounts\.google\.com$/.test(finalHost)) return json({ error: 'This Google file is not shared publicly' }, 401);
+  if (!readable(finalHost) && !(gdoc && /(?:^|\.)(?:googleusercontent\.com|docs\.google\.com)$/.test(finalHost))) return json({ error: 'Redirected off the reading list' }, 403);
   const type = r.headers.get('Content-Type') || '';
-  if (!/text\/html|application\/xhtml|application\/pdf|text\/plain|application\/xml|text\/xml/i.test(type)) return json({ error: 'Unsupported content type' }, 415);
+  if (!/text\/html|application\/xhtml|application\/pdf|text\/plain|text\/csv|application\/xml|text\/xml/i.test(type)) return json({ error: 'Unsupported content type' }, 415);
   const len = +(r.headers.get('Content-Length') || 0);
   if (len > MAX_READ) return json({ error: 'File too large' }, 413);
   const buf = await r.arrayBuffer();

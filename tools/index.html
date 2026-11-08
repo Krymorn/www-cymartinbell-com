@@ -30,9 +30,9 @@
   <form id="ask" class="ask" autocomplete="off">
     <label for="q" class="sr">Ask anything</label>
     <textarea id="q" rows="1" placeholder="Type anything, or drop a file: integrate x^2 sin x · papers on ros2 · weather in Boston" spellcheck="false" autocapitalize="off" enterkeyhint="go"></textarea>
-    <button type="button" id="attach" class="attach" aria-label="Add a file as context" title="Add PDF, text, CSV or JSON files as context">📎</button>
+    <button type="button" id="attach" class="attach" aria-label="Add a file as context" title="Add PDFs, Word, PowerPoint, Excel, photos, text or CSV files as context">📎</button>
     <button type="submit" class="go" aria-label="Go">→</button>
-    <input type="file" id="file" multiple hidden accept=".pdf,.txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.log,.tex,.bib,.rtf,.py,.js,.ts,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.sql,.yaml,.yml,.ini,.cfg,.srt,.vtt,text/*,application/pdf,application/json">
+    <input type="file" id="file" multiple hidden accept=".pdf,.docx,.pptx,.xlsx,.odt,.odp,.ods,.png,.jpg,.jpeg,.webp,.gif,.bmp,.tif,.tiff,image/*,.txt,.md,.markdown,.csv,.tsv,.json,.html,.htm,.xml,.log,.tex,.bib,.rtf,.py,.js,.ts,.java,.c,.cpp,.h,.cs,.go,.rs,.rb,.php,.swift,.kt,.sql,.yaml,.yml,.ini,.cfg,.srt,.vtt,text/*,application/pdf,application/json">
   </form>
   <div id="ctx" class="vars" hidden></div>
   <div id="vars" class="vars" hidden></div>
@@ -41,6 +41,6 @@
   <section id="home" class="home"></section>
   <div id="feed" class="feed" aria-live="polite"></div>
 </main>
-<div id="drop" class="drop" hidden><div class="drop-box">Drop files to use them as context<span>PDF, text, Markdown, CSV, JSON or code. Read on your device, never uploaded.</span></div></div>
+<div id="drop" class="drop" hidden><div class="drop-box">Drop files to use them as context<span>PDF, Word, PowerPoint, Excel, photos of worksheets, text, CSV or code. Read on your device, never uploaded.</span></div></div>
 </body>
 </html>

@@ -54,8 +54,10 @@ A "type anything" answer engine at `cymartinbell.com/tools`. It isn't linked any
 isn't in the sitemap, and tells search engines not to index it. "Hidden" isn't the same as
 private: anyone who has the link can open it.
 
-No AI is used. Queries are matched against hand-written rules; math runs on SymPy and math.js
-in the browser; facts come from public APIs; files are searched with keyword ranking (BM25).
+No transformer AI or language model is used. Queries are matched against hand-written rules;
+math runs on SymPy and math.js in the browser; facts come from public APIs; files are searched
+with keyword ranking (BM25) and answered with question-type patterns. Photos and scanned PDFs
+are read with Tesseract OCR (a classic LSTM text recognizer, loaded only when needed).
 
 | File | What it does |
 |---|---|
@@ -63,7 +65,9 @@ in the browser; facts come from public APIs; files are searched with keyword ran
 | `tools/app.js` | Query router (the `RULES` list), result cards, charts |
 | `tools/sources.js`, `sources2.js` | Data sources (Wikipedia, OpenAlex, PubMed, NHTSA, Open-Meteo, NOAA, PubChem, World Bank…) |
 | `tools/extras.js` | Local calculators (probability, curve fits, truth tables, timers, time zones, QR codes…) |
-| `tools/files.js` | Files as context: PDFs, text, CSV, JSON are read on the visitor's device, never uploaded |
+| `tools/more.js` | Code explainer, grades, recipes from ingredients, comparisons, weather at a time, follow-ups |
+| `tools/files.js` | Files as context: PDF, Word, PowerPoint, Excel, images (OCR), text, CSV, JSON, read on the visitor's device |
+| `tools/wordproblems.py` | Word problems: formulas with units, geometry, percents, ages, mixtures, rates, algebra from English |
 | `tools/engine.py`, `worker.js` | Symbolic math engine (SymPy running in the browser via Pyodide) |
 | `worker/proxy.js` | Cloudflare Function that fetches from an allowlist of sources that block direct browser access. Deployed automatically. Free tier: 100k requests/day |
 

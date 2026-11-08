@@ -84,9 +84,20 @@ const LANGS = (() => {
 })();
 export const langCode = (name) => { const n = String(name || '').toLowerCase().trim(); return LANGS[n] || (/^[a-z]{2}$/.test(n) ? n : null); };
 
+const PLACE_ALIAS = { nyc: 'New York City', la: 'Los Angeles', sf: 'San Francisco', dc: 'Washington', 'washington dc': 'Washington', 'washington d.c.': 'Washington', philly: 'Philadelphia', vegas: 'Las Vegas', nola: 'New Orleans' };
+const STATE_AB = { al: 'alabama', ak: 'alaska', az: 'arizona', ar: 'arkansas', ca: 'california', co: 'colorado', ct: 'connecticut', de: 'delaware', fl: 'florida', ga: 'georgia', hi: 'hawaii', id: 'idaho', il: 'illinois', in: 'indiana', ia: 'iowa', ks: 'kansas', ky: 'kentucky', la: 'louisiana', me: 'maine', md: 'maryland', ma: 'massachusetts', mi: 'michigan', mn: 'minnesota', ms: 'mississippi', mo: 'missouri', mt: 'montana', ne: 'nebraska', nv: 'nevada', nh: 'new hampshire', nj: 'new jersey', nm: 'new mexico', ny: 'new york', nc: 'north carolina', nd: 'north dakota', oh: 'ohio', ok: 'oklahoma', or: 'oregon', pa: 'pennsylvania', ri: 'rhode island', sc: 'south carolina', sd: 'south dakota', tn: 'tennessee', tx: 'texas', ut: 'utah', vt: 'vermont', va: 'virginia', wa: 'washington', wv: 'west virginia', wi: 'wisconsin', wy: 'wyoming', on: 'ontario', bc: 'british columbia', qc: 'quebec', uk: 'united kingdom' };
 async function geocode(place) {
-  const d = await get(`https://geocoding-api.open-meteo.com/v1/search?count=1&language=en&name=${enc(place.replace(/,.*$/, '').trim())}`);
-  let r = d.results && d.results[0];
+  place = PLACE_ALIAS[place.trim().toLowerCase()] || place;
+  // "Sudbury MA" / "Sudbury, Massachusetts": use the region to choose between places with the same name
+  let name = place.replace(/,.*$/, '').trim(), hint = (place.split(',')[1] || '').trim().toLowerCase();
+  const tail = /^(.+?)\s+([A-Za-z]{2})$/.exec(name);
+  if (!hint && tail && STATE_AB[tail[2].toLowerCase()]) { name = tail[1]; hint = tail[2].toLowerCase(); }
+  hint = STATE_AB[hint] || hint;
+  const d = await get(`https://geocoding-api.open-meteo.com/v1/search?count=6&language=en&name=${enc(name)}`);
+  let all = d.results || [];
+  if (hint) all = [...all].sort((a, b) => ((b.admin1 || '').toLowerCase().startsWith(hint) || (b.country || '').toLowerCase().startsWith(hint) || (b.country_code || '').toLowerCase() === hint) - ((a.admin1 || '').toLowerCase().startsWith(hint) || (a.country || '').toLowerCase().startsWith(hint) || (a.country_code || '').toLowerCase() === hint));
+  let r = all[0];
+  if (r) r.others = all.slice(1, 5).map(o => [o.name, o.admin1, o.country_code].filter(Boolean).join(', '));
   if (!r) {
     const n = await get(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${enc(place)}`);
     if (!n[0]) throw new Error(`Couldn't find a place called "${place}".`);
@@ -122,6 +133,7 @@ export async function weather(ctx, place) {
   ctx.add({ title: 'Sun', table: [['Sunrise', new Date(d.sunrise[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })], ['Sunset', new Date(d.sunset[0]).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })]] });
   airQuality(ctx, g, true).catch(() => {});
   if (g.country_code === 'US' || /united states/i.test(g.label)) nwsAlerts(ctx, g).catch(() => {});
+  if (g.others && g.others.length) ctx.add({ title: `Not this ${g.name}?`, chips: g.others.map(o => `weather in ${o}`) });
   ctx.source('Open-Meteo', 'https://open-meteo.com');
 }
 
@@ -941,8 +953,13 @@ export async function explain(ctx, topic, { simple = true } = {}) {
   const look = async (host) => {
     const s = await get(`https://${host}/w/api.php?action=query&list=search&srsearch=${enc(t)}&srlimit=5&format=json&origin=*`);
     if (!s.query.search.length) return null;
-    const sum = await get(`https://${host}/api/rest_v1/page/summary/${enc(s.query.search[0].title.replace(/ /g, '_'))}`);
-    return { sum, others: s.query.search.slice(1).map(x => x.title) };
+    const words = t.toLowerCase().split(/\s+/).filter(w => w.length > 3 && !/^(?:what|does|work|works|how|why|the|and|with)$/.test(w)).map(w => w.replace(/(?:ies|es|s)$/, ''));
+    const fits = (x) => words.some(w => x.title.toLowerCase().includes(w));
+    const question = /^(?:why|how|what makes|what causes)\b/i.test(t);
+    const hit = s.query.search.find(x => x.title.toLowerCase() === t.toLowerCase()) || (question ? s.query.search[0] : s.query.search.find(fits)) || s.query.search[0];
+    if (host.startsWith('simple') && !question && !fits(hit) && words.length) return null;
+    const sum = await get(`https://${host}/api/rest_v1/page/summary/${enc(hit.title.replace(/ /g, '_'))}`);
+    return { sum, others: s.query.search.filter(x => x !== hit).map(x => x.title) };
   };
   let lastErr = null;
   const [simpleR, enR] = await Promise.all([look('simple.wikipedia.org').catch(e => { lastErr = e; return null; }), look('en.wikipedia.org').catch(e => { lastErr = e; return null; })]);
@@ -955,7 +972,7 @@ export async function explain(ctx, topic, { simple = true } = {}) {
   const hard = [...new Set(terms)].slice(0, 12);
   if (hard.length) {
     const defs = (await Promise.all(hard.map(w => get(`https://api.datamuse.com/words?sp=${enc(w)}&md=fd&max=1`).then(d => d[0]).catch(() => null))))
-      .filter(r => r && r.defs && r.tags).map(r => ({ w: r.word, f: parseFloat((r.tags.find(x => x.startsWith('f:')) || 'f:99').slice(2)), d: r.defs[0].split('\t')[1] })).filter(r => r.f < 8).slice(0, 6);
+      .filter(r => r && r.defs && r.tags).map(r => ({ w: r.word, f: parseFloat((r.tags.find(x => x.startsWith('f:')) || 'f:99').slice(2)), d: r.defs[0].split('\t')[1] })).filter(r => r.f < 8 && r.d && !/[|=]|thumb|alt=/.test(r.d)).slice(0, 6);
     if (defs.length) ctx.add({ title: 'Words to know', table: defs.map(r => [r.w, r.d]) });
   }
   const related = [...new Set([...(enR ? enR.others : []), ...(simpleR ? simpleR.others : [])])].slice(0, 6);
