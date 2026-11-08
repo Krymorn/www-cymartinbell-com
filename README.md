@@ -48,3 +48,26 @@ Every push to `main` redeploys automatically.
 - `_headers` sets security headers (Cloudflare reads it automatically).
 - `404.html` is used automatically for missing pages.
 - Cloudflare serves clean URLs: `/services` works, and `/services.html` redirects to it.
+
+## Tools page (/tools)
+A "type anything" answer engine at `cymartinbell.com/tools`. It isn't linked anywhere,
+isn't in the sitemap, and tells search engines not to index it. "Hidden" isn't the same as
+private: anyone who has the link can open it.
+
+No AI is used. Queries are matched against hand-written rules; math runs on SymPy and math.js
+in the browser; facts come from public APIs; files are searched with keyword ranking (BM25).
+
+| File | What it does |
+|---|---|
+| `tools/index.html`, `tools.css` | The page |
+| `tools/app.js` | Query router (the `RULES` list), result cards, charts |
+| `tools/sources.js`, `sources2.js` | Data sources (Wikipedia, OpenAlex, PubMed, NHTSA, Open-Meteo, NOAA, PubChem, World Bank…) |
+| `tools/extras.js` | Local calculators (probability, curve fits, truth tables, timers, time zones, QR codes…) |
+| `tools/files.js` | Files as context: PDFs, text, CSV, JSON are read on the visitor's device, never uploaded |
+| `tools/engine.py`, `worker.js` | Symbolic math engine (SymPy running in the browser via Pyodide) |
+| `functions/tools/api/proxy.js` | Cloudflare Function that fetches from an allowlist of sources that block direct browser access. Deployed automatically. Free tier: 100k requests/day |
+
+**Optional keys** (Cloudflare → Pages project → Settings → Variables and Secrets):
+- `BRAVE_KEY`: free Brave Search API key (https://brave.com/search/api/). Adds live web results to the fallback search.
+
+To add a new kind of query: add a `[regex, handler]` line to `RULES` in `tools/app.js`.

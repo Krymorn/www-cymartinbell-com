@@ -6,3 +6,7 @@
 
 /images/*
   Cache-Control: public, max-age=604800
+
+/tools/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Referrer-Policy: same-origin
