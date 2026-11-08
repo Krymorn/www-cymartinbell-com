@@ -65,9 +65,15 @@ in the browser; facts come from public APIs; files are searched with keyword ran
 | `tools/extras.js` | Local calculators (probability, curve fits, truth tables, timers, time zones, QR codes…) |
 | `tools/files.js` | Files as context: PDFs, text, CSV, JSON are read on the visitor's device, never uploaded |
 | `tools/engine.py`, `worker.js` | Symbolic math engine (SymPy running in the browser via Pyodide) |
-| `functions/tools/api/proxy.js` | Cloudflare Function that fetches from an allowlist of sources that block direct browser access. Deployed automatically. Free tier: 100k requests/day |
+| `worker/proxy.js` | Cloudflare Function that fetches from an allowlist of sources that block direct browser access. Deployed automatically. Free tier: 100k requests/day |
 
 **Optional keys** (Cloudflare → Pages project → Settings → Variables and Secrets):
 - `BRAVE_KEY`: free Brave Search API key (https://brave.com/search/api/). Adds live web results to the fallback search.
 
 To add a new kind of query: add a `[regex, handler]` line to `RULES` in `tools/app.js`.
+
+## Hosting note
+This repo deploys as a Cloudflare **Worker with static assets** (Workers Builds), configured by
+`wrangler.jsonc`. All files are served as-is; only `/tools/api/proxy` runs code (`worker/`).
+`.assetsignore` keeps config and README files from being served. To enable the optional web
+search, add a secret named `BRAVE_KEY` under the Worker's Settings → Variables and Secrets.
