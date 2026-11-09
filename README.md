@@ -59,6 +59,11 @@ math runs on SymPy and math.js in the browser; facts come from public APIs; file
 with keyword ranking (BM25) and answered with question-type patterns. Photos and scanned PDFs
 are read with Tesseract OCR (a classic LSTM text recognizer, loaded only when needed).
 
+Answers from public sources are cached in the visitor's browser and at Cloudflare's edge (the
+Worker proxy), requests to one site are spaced out, and rate limits fall back to the proxy, so
+busy sources like Wikipedia fail far less often. Word problems are solved by ~60 pattern solvers
+plus a general units-analysis fallback; anything that fits none of them says so instead of guessing.
+
 | File | What it does |
 |---|---|
 | `tools/index.html`, `tools.css` | The page |
@@ -67,6 +72,7 @@ are read with Tesseract OCR (a classic LSTM text recognizer, loaded only when ne
 | `tools/extras.js` | Local calculators (probability, curve fits, truth tables, timers, time zones, QR codes…) |
 | `tools/more.js` | Code explainer, grades, recipes from ingredients, comparisons, weather at a time, follow-ups |
 | `tools/files.js` | Files as context: PDF, Word, PowerPoint, Excel, images (OCR), text, CSV, JSON, read on the visitor's device |
+| `tools/spell.js`, `tools/data/words.txt` | Offline spelling fixes (Norvig's method over a 60,000-word frequency list from the wordfreq project) |
 | `tools/wordproblems.py` | Word problems: formulas with units, geometry, percents, ages, mixtures, rates, algebra from English |
 | `tools/engine.py`, `worker.js` | Symbolic math engine (SymPy running in the browser via Pyodide) |
 | `worker/proxy.js` | Cloudflare Function that fetches from an allowlist of sources that block direct browser access. Deployed automatically. Free tier: 100k requests/day |
@@ -81,3 +87,7 @@ This repo deploys as a Cloudflare **Worker with static assets** (Workers Builds)
 `wrangler.jsonc`. All files are served as-is; only `/tools/api/proxy` runs code (`worker/`).
 `.assetsignore` keeps config and README files from being served. To enable the optional web
 search, add a secret named `BRAVE_KEY` under the Worker's Settings → Variables and Secrets.
+
+## Credits
+- Word list in `tools/data/words.txt`: derived from [wordfreq](https://github.com/rspeer/wordfreq)
+  by Robyn Speer, whose data is licensed CC BY-SA 4.0. The derived list is shared under the same license.

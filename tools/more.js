@@ -232,9 +232,10 @@ async function compare(ctx, a, b, deps) {
         const full = await deps.get(`https://${host}/w/api.php?action=query&prop=extracts&explaintext=1&exintro=0&exchars=12000&titles=${enc(hit.title)}&format=json&origin=*`).catch(() => null);
         const text = full ? Object.values(full.query.pages)[0].extract || '' : '';
         return { title: p.title, extract: p.extract, text, url: p.content_urls.desktop.page, host };
-      } catch (e) { if (/busy/.test(e.message)) throw e; }
+      } catch (e) { /* busy or missing: try the next source */ }
     }
-    return null;
+    const d = await deps.get(`https://api.duckduckgo.com/?q=${encodeURIComponent(t)}&format=json&no_html=1&skip_disambig=1`).catch(() => null);
+    return d && d.AbstractText ? { title: d.Heading || t, extract: d.AbstractText, text: d.AbstractText, url: d.AbstractURL || `https://duckduckgo.com/?q=${encodeURIComponent(t)}` } : null;
   };
   const [A, B] = await Promise.all([sum(a), sum(b)]);
   if (!A && !B) throw new Error(`Couldn't find either "${a}" or "${b}".`);

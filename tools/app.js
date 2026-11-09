@@ -5,6 +5,7 @@ import * as S2 from './sources2.js';
 import * as F from './files.js';
 import { EXTRA_RULES } from './extras.js';
 import { MORE_RULES, cleanTopic, placeAlias } from './more.js';
+import { correct as spellCorrect } from './spell.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -716,7 +717,7 @@ async function tryWordProblem(ctx, raw) {
   const wait = Engine.ready ? null : ctx.add({ title: 'Working', text: 'Loading the math engine (about 10 seconds the first time)…', loading: true });
   let out;
   try { out = await Engine.call({ op: 'wordproblem', text: raw.trim() }); } catch (_) { out = null; } finally { if (wait) wait.remove(); }
-  if (!out || !out.ok || out.notunderstood || !out.pods.length) return false;
+  if (!out || !out.ok || out.notunderstood || !out.pods.length) { ctx.wpMiss = raw.trim(); return false; }
   ctx.label(out.label || 'Word problem');
   ctx.input(out.interp || '');
   out.pods.forEach(p => ctx.add(p));
@@ -833,8 +834,10 @@ function followUp(q) {
   return r;
 }
 const TYPOS = { teh: 'the', hte: 'the', waht: 'what', wat: 'what', whta: 'what', hwo: 'how', woh: 'who', adn: 'and', nad: 'and', taht: 'that', thsi: 'this', ot: 'to', fo: 'of', si: 'is', wehre: 'where', whre: 'where', wher: 'where', whne: 'when', becuase: 'because', recieve: 'receive', definately: 'definitely', seperate: 'separate', untill: 'until', wich: 'which', thier: 'their', goverment: 'government', enviroment: 'environment', populaton: 'population', popluation: 'population', captial: 'capital', calender: 'calendar' };
-async function spellSuggest(q) {
-  let fixed = q.split(/(\s+)/).map(w => TYPOS[w.toLowerCase()] || w).join('').replace(/\bcapitol of\b/gi, 'capital of');
+async function spellSuggest(q, { strict = false } = {}) {
+  let fixed = q.split(/(\s+)/).map(w => TYPOS[w.toLowerCase()] || w).join('');
+  try { fixed = (await spellCorrect(fixed, { strict })).text; } catch (_) {}
+  if (strict) return fixed.toLowerCase() !== q.toLowerCase() ? fixed : null;
   for (let i = 0; i < 3; i++) { const n = await wikiSuggest(fixed); if (!n || n === fixed.toLowerCase()) break; fixed = n; }
   return fixed.toLowerCase() !== q.toLowerCase() ? fixed : null;
 }
@@ -889,9 +892,9 @@ async function route(ctx, raw, opts = {}) {
     if (mathy(rest) && await tryMath(ctx, rest)) return;
   }
   if (mathy(q) && await tryMath(ctx, q)) return;
-  // A typo? Ask Wikipedia's spelling suggester, then try once more with the fixed question.
+  // Nothing matched: maybe a typo. Clear one-letter slips are fixed offline first.
   if (!opts.corrected && !(F.hasDocs() && !noFiles)) {
-    const sug = await spellSuggest(q);
+    const sug = await spellSuggest(q, { strict: true });
     if (sug) { ctx.add({ title: 'Spelling', text: `Showing results for “${sug}”`, buttons: [{ label: `Search for “${q}” instead`, query: `web: ${q}` }] }); return route(ctx, sug, { corrected: true }); }
   }
   // Nothing specific matched: if the user has files loaded, their own documents come first.
@@ -904,8 +907,29 @@ async function route(ctx, raw, opts = {}) {
     // Short phrases ("ada lovelace", "photosynthesis") read best as an encyclopedia entry.
     try { await S.wiki(ctx, q); ctx.add({ title: 'Not what you meant?', buttons: [{ label: 'Search everywhere', query: `search ${q}` }, ...engineButtons(q).slice(0, 3)] }); return done(); } catch (_) {}
   }
+  // A word problem none of the solvers could set up: say so plainly and show what was found,
+  // rather than unrelated web results.
+  if (!opts.corrected && !fromFiles && !ctx.wpMiss) {
+    const sug = await spellSuggest(q);
+    if (sug) { ctx.add({ title: 'Spelling', text: `Showing results for “${sug}”`, buttons: [{ label: `Search for “${q}” instead`, query: `web: ${q}` }] }); return route(ctx, sug, { corrected: true }); }
+  }
+  if (ctx.wpMiss && !fromFiles && (ctx.wpMiss.match(/\d+(?:\.\d+)?/g) || []).length >= 2 && ctx.wpMiss.split(/\s+/).length >= 10 && !/^(?:who|when|where)\b/i.test(ctx.wpMiss)) { wordProblemMiss(ctx, ctx.wpMiss); return; }
   await universal(ctx, q, fromFiles);
   return done();
+}
+
+function wordProblemMiss(ctx, text) {
+  ctx.label('Word problem');
+  ctx.input('Couldn’t set this one up automatically');
+  const nums = [...text.matchAll(/(\$\s?)?(\d[\d,]*(?:\.\d+)?(?:\s*\/\s*\d+)?)\s*(%|[a-zA-Z/²³°]+(?:\s+(?:per|an?)\s+[a-z]+)?)?/g)].map(m => `${m[1] || ''}${m[2]}${m[3] && !/^(?:and|or|the|a|an|of|to|in|is|are|was|with|for|if|then|but)$/i.test(m[3]) ? ' ' + m[3] : ''}`);
+  const qm = /[^.?!]*\?\s*$/.exec(text) || /(?:^|[.!]\s+)((?:find|what|how|determine|calculate)[^.?!]*)[.?!]?\s*$/i.exec(text);
+  ctx.add({ title: 'What I found', table: [['Numbers', nums.join(' · ') || 'none'], ['Question', qm ? (qm[1] || qm[0]).trim() : 'not sure']] });
+  ctx.add({ title: 'Ways to get an answer', numbered: [
+    'Write the equation yourself, using a letter for each unknown, e.g. “solve 8a + 5k = 780, a + k = 120”. I solve it exactly and show steps.',
+    'Or split it into steps: ask each smaller calculation on its own line.',
+    'Or rephrase using common wording: “X is 3 more than twice Y”, “together they have 40”, “at 60 mph for 2 hours”.'],
+    note: 'Word problems are solved by matching known patterns (rates, ages, mixtures, money, geometry, “more than / times as many”). This one didn’t fit any of them closely enough to trust an answer.' });
+  ctx.add({ title: 'Search for a worked example', buttons: engineButtons(text.slice(0, 200)).slice(0, 3) });
 }
 
 async function tryRules(ctx, q) {

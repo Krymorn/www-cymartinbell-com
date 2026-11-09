@@ -6,6 +6,7 @@
 //   - responses are cached at the edge for a few minutes
 
 const ALLOW = new Set([
+  'simple.wikipedia.org',
   'export.arxiv.org',
   'api.semanticscholar.org',
   'api.github.com',
@@ -116,7 +117,8 @@ export async function onRequest({ request, env }) {
       'User-Agent': 'cymartinbell.com-tools/1.0',
       'Accept': request.headers.get('Accept') || '*/*',
     },
-    cf: { cacheTtl: 300, cacheEverything: method === 'GET' },
+    // Cache at Cloudflare's edge so repeat questions don't hit the source again (and its rate limits).
+    cf: { cacheTtl: ttlFor(target.hostname), cacheEverything: method === 'GET', cacheTtlByStatus: { '200-299': ttlFor(target.hostname), '404': 600, '429': 0, '500-599': 0 } },
   };
   if (method === 'POST') {
     init.body = await request.text();
@@ -126,9 +128,16 @@ export async function onRequest({ request, env }) {
   const upstream = await fetch(target.toString(), init);
   const headers = new Headers();
   headers.set('Content-Type', upstream.headers.get('Content-Type') || 'text/plain');
-  headers.set('Cache-Control', 'public, max-age=300');
+  headers.set('Cache-Control', upstream.ok ? `public, max-age=${Math.min(ttlFor(target.hostname), 3600)}` : 'no-store');
   headers.set('X-Robots-Tag', 'noindex');
   return new Response(upstream.body, { status: upstream.status, headers });
+}
+
+// Reference data barely changes; live data (weather, prices, scores) does.
+function ttlFor(host) {
+  if (/wikipedia\.org$|wikidata\.org$|dictionaryapi\.dev$|datamuse\.com$|openlibrary\.org$|crossref\.org$|openalex\.org$|arxiv\.org$|themealdb\.com$|artic\.edu$/.test(host)) return 86400;
+  if (/open-meteo\.com$|coingecko\.com$|finance\.yahoo\.com$|espn\.com$|stooq\.com$|frankfurter\.app$/.test(host)) return 300;
+  return 1800;
 }
 
 function json(obj, status) {

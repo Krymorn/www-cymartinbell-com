@@ -5,32 +5,90 @@ const PROXY = '/tools/api/proxy?url=';
 
 // Sources that sometimes refuse direct browser requests (CORS on error pages, rate limits):
 // if a direct request fails at the network level, retry once through the site's own helper.
-const FALLBACK = new Set(['geocoding-api.open-meteo.com', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'router.project-osrm.org', 'api.datamuse.com', 'openlibrary.org', 'api.coingecko.com', 'api.openalex.org', 'en.wikipedia.org', 'www.wikidata.org', 'api.duckduckgo.com', 'nominatim.openstreetmap.org', 'api.github.com', 'api.artic.edu', 'site.api.espn.com', 'archive-api.open-meteo.com', 'api.nasa.gov', 'api.nal.usda.gov']);
+const FALLBACK = new Set(['simple.wikipedia.org', 'api.dictionaryapi.dev', 'geocoding-api.open-meteo.com', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'router.project-osrm.org', 'api.datamuse.com', 'openlibrary.org', 'api.coingecko.com', 'api.openalex.org', 'en.wikipedia.org', 'www.wikidata.org', 'api.duckduckgo.com', 'nominatim.openstreetmap.org', 'api.github.com', 'api.artic.edu', 'site.api.espn.com', 'archive-api.open-meteo.com', 'api.nasa.gov', 'api.nal.usda.gov']);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-export async function get(url, { proxy = false, type = 'json', timeout = 15000, init, retries = 1 } = {}) {
+// ---------- fetching, with caching and politeness ----------
+// Answers are cached (memory + this browser's storage) so asking again, or asking a follow-up,
+// doesn't hit the source again. Requests to one site are spaced out, identical requests share one
+// fetch, rate limits are retried with backoff, then retried through the site's own proxy (which
+// has its own edge cache), and as a last resort an older cached copy is used.
+const MEM = new Map();
+const INFLIGHT = new Map();
+const LAST = new Map();
+const TTL = (host) => (/wikipedia\.org$|wikidata\.org$|dictionaryapi\.dev$|datamuse\.com$|openlibrary\.org$|openalex\.org$|crossref\.org$|themealdb\.com$|pubchem|artic\.edu$|metmuseum\.org$|nager\.at$|zippopotam\.us$/.test(host) ? 864e5
+  : /open-meteo\.com$|coingecko\.com$|yahoo\.com$|espn\.com$|frankfurter\.app$|usgs\.gov$|wheretheiss|gdeltproject|noaa\.gov$|weather\.gov$/.test(host) ? 3e5 : 18e5);
+const store = (() => { try { const k = '__t'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return localStorage; } catch (_) { return null; } })();
+function cacheGet(key, allowStale = false) {
+  let e = MEM.get(key);
+  if (!e && store) { try { const raw = store.getItem('c:' + key); if (raw) { e = JSON.parse(raw); MEM.set(key, e); } } catch (_) {} }
+  if (!e) return undefined;
+  return allowStale || Date.now() < e.exp ? e.v : undefined;
+}
+function cachePut(key, v, ttl) {
+  const e = { v, exp: Date.now() + ttl };
+  MEM.set(key, e);
+  if (MEM.size > 400) MEM.delete(MEM.keys().next().value);
+  if (!store) return;
+  try {
+    const raw = JSON.stringify(e);
+    if (raw.length > 150000) return;
+    store.setItem('c:' + key, raw);
+  } catch (_) {
+    // storage full: drop the oldest half of our entries and move on
+    try { const ks = Object.keys(store).filter(k => k.startsWith('c:')); ks.slice(0, Math.ceil(ks.length / 2)).forEach(k => store.removeItem(k)); } catch (_) {}
+  }
+}
+async function polite(host) {
+  const gap = /wikipedia|wikidata|nominatim|crossref|openalex|datamuse/.test(host) ? (host.includes('nominatim') ? 1100 : 150) : 0;
+  if (!gap) return;
+  const next = Math.max(Date.now(), (LAST.get(host) || 0) + gap);
+  LAST.set(host, next);
+  if (next > Date.now()) await sleep(next - Date.now());
+}
+
+export async function get(url, opts = {}) {
+  const { type = 'json', init } = opts;
+  const cacheable = !init || !init.method || init.method === 'GET';
+  const key = `${type}|${url}`;
+  if (cacheable) {
+    const hit = cacheGet(key);
+    if (hit !== undefined) return clone(hit);
+    if (INFLIGHT.has(key)) return INFLIGHT.get(key).then(clone);
+  }
+  const p = fetchFresh(url, opts).then((v) => { if (cacheable) cachePut(key, v, TTL(new URL(url).hostname)); return v; })
+    .catch((e) => { const stale = cacheable ? cacheGet(key, true) : undefined; if (stale !== undefined) return stale; throw e; })
+    .finally(() => INFLIGHT.delete(key));
+  if (cacheable) INFLIGHT.set(key, p);
+  return p.then(clone);
+}
+const clone = (v) => (v && typeof v === 'object' ? (typeof structuredClone === 'function' ? structuredClone(v) : JSON.parse(JSON.stringify(v))) : v);
+
+async function fetchFresh(url, { proxy = false, type = 'json', timeout = 15000, init, retries = 2 } = {}) {
   const host = new URL(url).hostname;
   const u = proxy ? PROXY + encodeURIComponent(url) : url;
+  await polite(proxy ? 'proxy:' + host : host);
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeout);
   let r;
   const opts = { ...(init || {}), signal: ctl.signal };
-  if (!proxy && /(^|\.)(wikipedia|wikidata)\.org$/.test(host)) opts.headers = { ...(opts.headers || {}), 'Api-User-Agent': 'cymartinbell.com-tools/1.0' };
+  if (!proxy && /(^|\.)(wikipedia|wikidata)\.org$/.test(host)) opts.headers = { ...(opts.headers || {}), 'Api-User-Agent': 'cymartinbell.com-tools/1.0 (cymartinbell.com/tools)' };
   try {
     r = await fetch(u, opts);
   } catch (e) {
     clearTimeout(t);
     if (e.name === 'AbortError') throw new Error(`${host} took too long to answer. Try again in a moment.`);
-    if (!proxy && FALLBACK.has(host)) return get(url, { proxy: true, type, timeout, init, retries: 0 });
+    if (!proxy && FALLBACK.has(host)) return fetchFresh(url, { proxy: true, type, timeout, init, retries: 1 });
     throw new Error(`Couldn't reach ${host}.`);
   }
   clearTimeout(t);
+  // Rate-limited: switch to the proxy straight away (different address, shared edge cache), then back off.
+  if (r.status === 429 && !proxy && FALLBACK.has(host)) return fetchFresh(url, { proxy: true, type, timeout, init, retries });
   if ((r.status === 429 || r.status >= 500) && retries > 0) {
-    await sleep(r.status === 429 ? 1500 : 700);
-    return get(url, { proxy, type, timeout, init, retries: retries - 1 });
+    const ra = +(r.headers.get('Retry-After') || 0);
+    await sleep(r.status === 429 ? Math.min(Math.max(ra * 1000, 1200 * (3 - retries)), 5000) : 700);
+    return fetchFresh(url, { proxy, type, timeout, init, retries: retries - 1 });
   }
-  // Still rate-limited: the site's helper asks from a different address.
-  if (r.status === 429 && !proxy && FALLBACK.has(host)) return get(url, { proxy: true, type, timeout, init, retries: 0 });
   if (!r.ok) {
     if (r.status === 429) throw new Error(`${host} is busy right now (rate limit). Try again in a minute.`);
     if (r.status === 404) throw new Error(`Nothing found at ${host} for that.`);
@@ -116,6 +174,7 @@ const fc = (f) => `${Math.round(f)}°F (${Math.round((f - 32) * 5 / 9)}°C)`;
 
 export async function weather(ctx, place) {
   ctx.label('Weather');
+  place = place.replace(/\s+(?:for\s+)?(?:today|tomorrow|tonight|now|right now|this (?:week|weekend|morning|afternoon|evening)|next week|on \w+day|\w+day)\s*$/i, '').trim() || place;
   const g = await geocode(place);
   ctx.input(`Weather in ${g.label}`);
   const w = await get(`https://api.open-meteo.com/v1/forecast?latitude=${g.latitude}&longitude=${g.longitude}&timezone=auto&temperature_unit=fahrenheit&wind_speed_unit=mph&precipitation_unit=inch&forecast_days=7&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_gusts_10m,precipitation,cloud_cover,pressure_msl,uv_index&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,sunrise,sunset&hourly=temperature_2m,precipitation_probability`);
@@ -963,7 +1022,18 @@ export async function explain(ctx, topic, { simple = true } = {}) {
   };
   let lastErr = null;
   const [simpleR, enR] = await Promise.all([look('simple.wikipedia.org').catch(e => { lastErr = e; return null; }), look('en.wikipedia.org').catch(e => { lastErr = e; return null; })]);
-  if (!simpleR && !enR) throw lastErr && /busy|reach|long/.test(lastErr.message) ? lastErr : new Error(`I couldn't find an explanation of "${t}".`);
+  if (!simpleR && !enR) {
+    // Wikipedia busy or empty: DuckDuckGo's instant answers carry a short encyclopedia abstract too.
+    const d = await get(`https://api.duckduckgo.com/?q=${enc(t)}&format=json&no_html=1&skip_disambig=1`).catch(() => null);
+    if (d && d.AbstractText) {
+      ctx.input(d.Heading || t);
+      ctx.add({ title: d.Heading || t, text: d.AbstractText, image: d.Image ? safeUrl(d.Image.startsWith('http') ? d.Image : 'https://duckduckgo.com' + d.Image) : undefined, imageSide: true, links: d.AbstractURL ? [{ label: `Read more on ${d.AbstractSource || 'the source'}`, url: d.AbstractURL }] : [] });
+      ctx.add({ title: 'Learn more', buttons: [{ label: 'Khan Academy', url: `https://www.khanacademy.org/search?page_search_query=${enc(t)}` }, { label: 'YouTube explainers', url: `https://www.youtube.com/results?search_query=${enc(t + ' explained')}` }] });
+      ctx.source('DuckDuckGo (abstract from ' + (d.AbstractSource || 'Wikipedia') + ')', d.AbstractURL || 'https://duckduckgo.com');
+      return;
+    }
+    throw lastErr && /busy|reach|long/.test(lastErr.message) ? lastErr : new Error(`I couldn't find an explanation of "${t}".`);
+  }
   const main = (simple && simpleR) ? simpleR : enR;
   ctx.input(main.sum.title);
   ctx.add({ title: simple && simpleR ? 'In plain words' : main.sum.title, text: main.sum.extract, image: main.sum.thumbnail ? safeUrl(main.sum.thumbnail.source) : undefined, imageSide: true, note: simple && simpleR ? 'From Simple English Wikipedia, written for younger readers and English learners.' : undefined });

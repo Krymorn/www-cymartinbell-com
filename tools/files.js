@@ -166,7 +166,9 @@ function summarize(text, n = 5) {
     for (let i = 0; i < N; i++) { let s = 0; for (let j = 0; j < N; j++) if (W[j][i]) s += W[j][i] / out[j] * score[j]; nxt[i] = 0.15 + 0.85 * s; }
     score = nxt;
   }
-  const ranked = [...score].map((s, i) => ({ i, s: s * (1 + 0.35 * Math.max(0, 1 - i / Math.max(N * 0.2, 4))) })).sort((a, b) => b.s - a.s);
+  // Sentences that lean on the one before ("He said…", "This means…") read badly on their own.
+  const dangling = (t) => /^(?:He|She|It|They|This|That|These|Those|His|Her|Their|Its|But|And|So|Also|Then|Instead|Still|Yet)\b/.test(t);
+  const ranked = [...score].map((s, i) => ({ i, s: s * (1 + 0.35 * Math.max(0, 1 - i / Math.max(N * 0.2, 4))) * (dangling(ss[i]) ? 0.7 : 1) })).sort((a, b) => b.s - a.s);
   const picked = [];
   for (const x of ranked) {
     if (picked.length >= n) break;
@@ -174,6 +176,47 @@ function summarize(text, n = 5) {
     picked.push(x);
   }
   return picked.sort((a, b) => a.i - b.i).map(x => ss[x.i]);
+}
+
+// Sentence compression (rule-based): drop side details so each key point is shorter but still
+// made of the author's own words: asides in brackets, "according to …", "…, X said", lead-in
+// connectives and non-essential "which/who" clauses.
+export function compress(t) {
+  let s = t.trim();
+  s = s.replace(/\s*\([^()]{0,120}\)/g, '').replace(/\s*\[[^\]]{0,40}\]/g, '');
+  s = s.replace(/^(?:however|moreover|furthermore|in addition|additionally|also|meanwhile|in fact|indeed|notably|importantly|of course|for example|for instance|in other words|overall|finally|first|second|third|lastly|similarly|likewise|on the other hand|as a result|therefore|thus|consequently|in short|in conclusion|to sum up),\s+/i, (m) => (/result|therefore|thus|consequently|conclusion|sum up|short/i.test(m) ? m : ''));
+  s = s.replace(/^according to [^,]{2,60},\s*/i, '').replace(/,\s*according to [^,.]{2,60}(?=[,.])/i, '');
+  s = s.replace(/,\s*(?:[A-Z][\w.'-]*\s?){1,4}(?:said|says|told [\w ]{1,20}|added|noted|explained|wrote|reported)\.?$/, '.').replace(/,["”]?\s*(?:said|says)\s+(?:[A-Z][\w.'-]*\s?){1,4}\.?$/, '.');
+  s = s.replace(/,\s*(?:which|who)\s+(?:is|are|was|were|has|had)\s+[^,]{3,80},/g, '');
+  s = s.replace(/,\s*(?:a|an|the)\s+[a-z][^,]{3,60}\s(?:of|at|for|in)\s[^,]{2,40},/g, '');   // ", a professor of physics at MIT,"
+  s = s.replace(/\s{2,}/g, ' ').replace(/\s+([,.;:])/g, '$1').trim();
+  if (s && /^[a-z]/.test(s)) s = s[0].toUpperCase() + s.slice(1);
+  return s.length >= 15 ? s : t;
+}
+
+// Recipes, how-tos, notes: text organised as "Label: item, item … 1. step 2. step".
+function structureSummary(text) {
+  const secs = [...text.matchAll(/(?:^|[.\n]\s*)([A-Z][A-Za-z ]{2,24}):\s+([^\n]+?)(?=(?:[.\n]\s*[A-Z][A-Za-z ]{2,24}:\s)|$)/g)].map(m => ({ label: m[1].trim(), body: m[2].trim() }));
+  if (secs.length < 2) return null;
+  return secs.slice(0, 8).map(sec => {
+    const steps = sec.body.split(/\s*\b\d{1,2}[.)]\s+/).map(x => x.trim()).filter(Boolean);
+    const items = steps.length > 1 ? steps : sec.body.split(/\s*[,;]\s*(?![^()]*\))/).filter(Boolean);
+    return [sec.label, `${items.length} ${steps.length > 1 ? 'steps' : 'items'}: ${items.slice(0, 8).map(x => x.replace(/\.$/, '')).join(steps.length > 1 ? ' → ' : ', ')}${items.length > 8 ? ' …' : ''}`];
+  });
+}
+
+function keyPointsPod(ctx, text, n, title = 'Key points') {
+  const struct = structureSummary(text);
+  if (struct) ctx.add({ title: 'At a glance', table: struct, note: 'Built from the labeled sections and numbered steps in the text.' });
+  const orig = summarize(text, n);
+  if (!orig.length) return orig;
+  const pts = orig.map(compress);
+  ctx.add({ title, custom: (el) => {
+    const ol = api.h('ol', 'numbered'); pts.forEach(p => ol.append(api.h('li', '', p))); el.append(ol);
+    if (pts.some((p, i) => p !== orig[i])) { const d = api.h('details', ''); d.append(api.h('summary', '', 'Show the original sentences')); const ol2 = api.h('ol', 'numbered'); orig.forEach(p => ol2.append(api.h('li', '', p))); d.append(ol2); el.append(d); }
+    el.append(api.h('p', 'note', 'The most central sentences (TextRank), shortened by removing side details like asides and attributions. Still the author’s words, not a rewrite.'));
+  } });
+  return orig;
 }
 
 // ---------- names, places, organisations (no AI: capitalisation + cue words) ----------
@@ -386,8 +429,7 @@ function overview(ctx, doc) {
     else { ctx.add({ title: 'Structure', table: jsonShape(doc.json) }); ctx.add({ title: 'Formatted', pre: JSON.stringify(doc.json, null, 2).slice(0, 20000) }); }
     return;
   }
-  const sum = summarize(doc.text, w > 3000 ? 7 : w > 400 ? 5 : 3);
-  if (sum.length) ctx.add({ title: 'Key sentences', numbered: sum, note: 'The most central sentences, ranked with TextRank. Quoted from the text, not rewritten.' });
+  keyPointsPod(ctx, doc.text, w > 3000 ? 7 : w > 400 ? 5 : 3);
   const ents = entities(doc.text);
   const erows = [['People', ents.people.join(', ')], ['Places', ents.places.join(', ')], ['Organizations', ents.orgs.join(', ')], ['Other names', ents.other.join(', ')], ['Money', ents.money.join(', ')], ['Years', ents.years.join(', ')]].filter(r => r[1]);
   if (erows.length) ctx.add({ title: 'Names and facts mentioned', table: erows, note: 'Found from capitalization and cue words, so expect a few mislabels.' });
@@ -513,8 +555,8 @@ export async function fileCommand(ctx, q) {
     ctx.label('Your files');
     for (const doc of docs) {
       ctx.input('Key sentences from your files');
-      const s = summarize(doc.text, m[1] ? +m[1] : words(doc.text).length > 3000 ? 8 : 5);
-      ctx.add({ title: doc.name, numbered: s.length ? s : ['Not enough running text to pick key sentences from.'] });
+      const s = keyPointsPod(ctx, doc.text, m[1] ? +m[1] : words(doc.text).length > 3000 ? 8 : 5, docs.length > 1 ? doc.name : 'Key points');
+      if (!s.length) ctx.add({ title: doc.name, text: 'Not enough running text to pick key sentences from.' });
       const t = keyTerms(doc.text, 12);
       if (t.length) ctx.add({ title: 'Key terms', chips: t.map(x => `find ${x}`) });
     }
@@ -915,8 +957,11 @@ export function fileContext(ctx, q, { strongOnly = false } = {}) {
     }
     if (/\b(?:main (?:idea|point|argument|claim|message|takeaway|theme)s?|thesis|gist|what(?:'s| is) (?:this|it|the (?:text|article|story|passage|email|paper|document|file|pdf)) (?:mainly |mostly )?about|what is the (?:author|writer)['’]?s? (?:point|argument|view))\b/i.test(q)) {
       const d = docs[docs.length - 1];
-      const s = summarize(d.text, 2);
-      ctx.add({ title: 'Main idea', numbered: s, note: 'The most central sentences (TextRank). An extractive summary, so it quotes rather than paraphrases.' });
+      // News and essays usually state the main point early: take the earliest of the top three.
+      const top = summarize(d.text, 3);
+      const s = top.slice(0, 1).map(compress);
+      const t = keyTerms(d.text, 6);
+      ctx.add({ title: 'Main idea', big: true, text: s[0] || '', note: `The single most central sentence (TextRank), shortened. It’s mostly about: ${t.join(', ')}.` });
       return true;
     }
     if (strongOnly && namesMissing(q)) return false;
@@ -964,7 +1009,7 @@ export function analyzeText(ctx, text, { keep = true, focus } = {}) {
   if (focus === 'summary') {
     ctx.input('Summary of your text');
     const m = /in (\d+) (?:sentences|points|bullets)/i.exec(focus);
-    ctx.add({ title: 'Key sentences', numbered: summarize(text, 4), note: 'Ranked with TextRank and quoted from your text.' });
+    keyPointsPod(ctx, text, 4);
     ctx.add({ title: 'Key terms', chips: keyTerms(text, 12).map(t => `find ${t}`) });
     return;
   }
