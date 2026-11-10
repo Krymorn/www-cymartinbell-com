@@ -6,6 +6,13 @@ import * as F from './files.js';
 import { EXTRA_RULES } from './extras.js';
 import { MORE_RULES, cleanTopic, placeAlias } from './more.js';
 import { correct as spellCorrect } from './spell.js';
+import * as K from './kit.js';
+import { GEN_RULES, GEN_FEATURES } from './gen.js';
+import { LATEX_RULES, LATEX_FEATURES } from './latex.js';
+import { DEV_RULES, DEV_FEATURES } from './dev.js';
+import { RESEARCH_RULES, RESEARCH_FEATURES } from './research.js';
+import { TEXT_RULES, TEXT_FEATURES } from './text.js';
+import { CALC_RULES, CALC_FEATURES } from './calc.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -434,6 +441,12 @@ const EXAMPLES = [
   ['Search', ['dork robotics competition rules', 'site:edu filetype:pdf quadruped gait', 'how do penguins sleep']],
   ['Your files', ['Drop a PDF, text, CSV or JSON file anywhere on the page, or use the 📎 button', 'summarize', 'main idea', 'what do I need to do', 'find results', 'references', 'outline']],
   ['Code & text', ['sha256 hello world', 'base64 encode hello', 'morse hello world', 'rot13 hello', '{"a":1,"b":[1,2]}', 'regex /\\d+/ on abc123def45', 'word count the quick brown fox', '#2f5d50']],
+  ['Citations & sources', ['cite 10.1038/nature14539', 'cite isbn 9780262046305', 'bibliography mla', 'cited by 10.1038/nature14539', 'trend quadruped robot', 'journal IEEE Transactions on Robotics', 'open access attention is all you need', 'free textbooks for calculus', 'lecture notes for control theory', 'email template extension request', 'outline for lab report', 'free images of the moon', 'quotes by Marie Curie', 'etymology robot', 'search builder: gait "central pattern generator" site:edu filetype:pdf after:2018']],
+  ['Study calculators', ['gpa A 4, B+ 3, A- 3, C 2', 'final exam: current 84, worth 25%, want 90', 't test 5.1 4.9 5.6 5.8 vs 6.2 6.4 5.9 6.8', 'chi square observed 30 14 6 expected 25 15 10', 'anova 4 5 6 | 6 7 8 | 9 9 10', 'confidence interval 95% mean 50 sd 10 n 25', 'sample size margin 3% 95% confidence', 'ph of 0.1 M acetic acid', 'empirical formula C 40% H 6.7% O 53.3%', 'ideal gas P=1 atm V=10 L T=25 C', 'projectile 20 m/s 45 degrees', 'resistor brown black orange gold', 'led resistor 5 V 2 V 20 mA', 'dna ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG', 'punnett AaBb x AaBb', 'triangle a=5 b=7 C=40', 'line through (1,2) and (4,8)', 'simplify boolean A B + A B\' + A\' B', 'shortest path A-B 4, B-C 2, A-C 7, C-D 3 from A to D', 'npv 8% -1000, 300, 400, 500', 'credit card 3000 at 24% paying 150/month', 'pace 5k in 24:30', 'time card 9-5:30 lunch 30 min, 8:45-4:15 at $16/hr', 'business days between today and Dec 20']],
+  ['Code & dev', ['npm package express', 'compare packages react vs vue', 'github repo pytorch/pytorch', 'library for parsing pdf in python', 'TypeError: Cannot read properties of undefined (reading \'map\')', 'run js: [1,2,3].map(x => x * 2)', 'how to read a csv in python', 'regex for email', 'explain regex ^\\d{3}-\\d{4}$', 'cron */15 9-17 * * 1-5', 'chmod 755', 'git undo last commit', '.gitignore python', 'license mit', 'http 418', 'cidr 192.168.1.0/24', 'big o cheat sheet', 'crate serde', 'docker image nginx']],
+  ['Writing & text', ['check grammar: Their going to the libary tomorow, and me and him is going to.', 'readability: The mitochondrion is the powerhouse of the cell. It produces ATP through cellular respiration, a multi-step process.', 'flashcards:\nmitosis - cell division making two identical cells\nmeiosis - division making four gametes\nosmosis - water moving across a membrane', 'unscramble tegrnai', 'words ending in ology', 'wordle cr?n? +a -stoil', 'all cases: my variable name', 'sort lines:\nbanana\napple\ncherry', 'extract emails from: contact amy@x.edu or bob@y.org', 'contrast #777777 on white', 'palette for #2f5d50', 'ieee 754 0.1', "two's complement -5 in 8 bits"]],
+  ['LaTeX & formulas', ['latex for integral of x^2 from 0 to 1', 'latex symbol for approximately equal', 'formula for kinetic energy', 'physics formula sheet', 'latex lab report template', 'latex table: Name, Score\nAmy, 92\nBob, 85', 'latex bmatrix [[1,0,0],[0,1,0],[0,0,1]]', 'derivatives table', 'unit circle', 'latex cheat sheet']],
+  ['Files & generators', ['sample dataset of 50 students with name, age, gpa, major', 'csv to json: name,age\nAmy,20\nBob,22', 'budget spreadsheet template', 'amortization schedule 25000 at 6% for 5 years', 'study plan: biology exam Dec 12, calculus exam Dec 15', 'event Robotics meeting on Friday at 4pm', 'password 24', 'uuid', 'random teams of 3 from Amy, Bob, Cy, Dee, Eli, Fay', 'barcode 012345678905', 'features']],
   ['Python', ['py: import numpy as np\nnp.linalg.eig([[2,1],[1,3]])', 'py: import matplotlib.pyplot as plt\nplt.plot([1,4,9,16]); plt.title("squares")']],
 ];
 
@@ -462,11 +475,23 @@ function checkAnswer(c, a1, a2) {
   return runEngine(c, { op: 'check', expr, answer: answer.replace(/\band\b/g, ',') }, 'Check');
 }
 
+const MULTILINE = /^(?:flash ?cards?|make flash ?cards?|study cards?|anki|quizlet|quiz me|make a quiz|practice quiz|test me|matching(?: game)?|match game|cloze|fill in the blanks?|sort lines|sort numbers|remove duplicate lines|dedupe|reverse lines|shuffle lines|number lines|remove empty lines|trim lines|join lines|add commas|quote lines|lines to array|count duplicate lines|remove line breaks|fix pdf text|remove extra spaces|straight quotes|smart quotes|strip html|markdown to html|html to markdown|extract|find all|replace|compare texts?|text similarity|similarity|word frequency|bigrams?|trigrams?|readability|style check|check (?:my )?grammar|grammar check|proofread|spell ?check|word count|text stats|csv|tsv|json|yaml|xml|convert|make (?:a |an )?(?:csv|excel|table|spreadsheet)|latex table|table to latex|sql|run js|run javascript|js|format|beautify|minify|diff|validate|check syntax|big o|explain (?:this )?code|explain regex|time card|timecard|timesheet|total hours|anova|chi|frequency table|histogram|bibtex|bib|study plan|flash|outline|bibliography|homework doc|latex homework|align|cases|tally)\b[^\n]*\n/i;
+const DEPS = { S, S2, F, K, get: S.get, enc, ask, parseDate: (...a) => parseDate(...a), runEngine: (...a) => runEngine(...a), engineButtons: (...a) => engineButtons(...a) };
+const FEATURE_GROUPS = [['Research & citations', RESEARCH_FEATURES], ['Code & developer tools', DEV_FEATURES], ['Study calculators (stats, chem, physics, bio, finance…)', CALC_FEATURES], ['Writing & text tools', TEXT_FEATURES], ['LaTeX & formulas', LATEX_FEATURES], ['Files & generators (CSV, Excel, ICS…)', GEN_FEATURES]];
+function featureList(ctx) {
+  ctx.label('Features');
+  const n = FEATURE_GROUPS.reduce((a, [, f]) => a + f.length, 0);
+  ctx.input(`${n} newer features, on top of math, data and search`);
+  for (const [t, f] of FEATURE_GROUPS) ctx.add({ title: `${t} (${f.length})`, list: f.map(x => ({ title: x })) });
+  ctx.add({ title: 'Examples', chips: ['help'] });
+}
 const RULES = [
   [/^(?:py|python)\s*[:>]\s*([\s\S]+)$/i, (c, m) => runEngine(c, { op: 'python', code: m[1] }, 'Python')],
   [/^(?:read|open|summari[sz]e|analy[sz]e|fetch)?\s*(https?:\/\/\S+)$/i, (c, m) => F.addUrl(c, m[1])],
   [/^(?:summari[sz]e|tl;?dr|key points(?: of)?|main idea(?: of)?)\s*:?\s*([\s\S]{120,})$/i, (c, m) => F.analyzeText(c, m[1], { focus: 'summary' })],
   [/^(?:analy[sz]e|extract (?:info|information|names|facts|data)(?: from)?|explain|simplify|break down|define (?:the )?(?:hard )?words in)\s*(?:this|the following|text)?\s*:?\s*([\s\S]{120,})$/i, (c, m) => F.analyzeText(c, m[1])],
+  [/^(?:features|all features|feature list|what can you do (?:in )?(?:full|detail))$/i, (c) => featureList(c)],
+  ...[...DEV_RULES, ...RESEARCH_RULES, ...CALC_RULES, ...TEXT_RULES, ...LATEX_RULES, ...GEN_RULES].map(([re, fn]) => [re, (c, m, q) => fn(c, m, q, DEPS)]),
   ...MORE_RULES.map(([re, fn]) => [re, (c, m, q) => fn(c, m, q, { S, S2, runEngine, engineButtons, ask, get: S.get })]),
   [/^(?:check|verify)\s+(?:if\s+|whether\s+|that\s+)?(.+?)\s+(?:is (?:a |the )?(?:solution|answer|root) (?:of|to|for)|solves|satisfies|in|for|with|using|when|where)\s+(.+)$/i, (c, m) => checkAnswer(c, m[1], m[2])],
   [/^is\s+(.+?)\s+(?:a |the )?(?:solution|answer|root) (?:of|to|for)\s+(.+)$/i, (c, m) => checkAnswer(c, m[1], m[2])],
@@ -856,6 +881,8 @@ async function route(ctx, raw, opts = {}) {
   raw = normalizeMath(raw);
   if (/\\[a-zA-Z]+/.test(raw) && raw.length < 600) raw = latexToPlain(raw);
   let q = raw.trim();
+  // Commands whose input is a block of lines (flashcards, CSV, code…) keep their line breaks.
+  if (raw.includes('\n') && MULTILINE.test(raw.trim()) && await tryRules(ctx, raw.trim())) return;
   // A pasted list of problems: answer each one on its own card.
   const hw = raw.includes('\n') ? splitHomework(raw) : null;
   if (hw && hw.length <= 30) {
@@ -966,7 +993,9 @@ function newCard(q) {
   share.onclick = async () => { const url = `${location.origin}${location.pathname}?q=${enc(q)}`; try { await navigator.clipboard.writeText(url); share.textContent = 'Link copied'; setTimeout(() => (share.textContent = 'Share'), 1500); } catch (_) { prompt('Copy this link', url); } };
   const again = h('button', 'icon-btn', 'Edit'); again.type = 'button'; again.onclick = () => { input.value = q; autosize(); input.focus(); };
   const close = h('button', 'icon-btn', '×'); close.type = 'button'; close.title = 'Remove'; close.onclick = () => card.remove();
-  acts.append(share, again, close);
+  const exp = h('button', 'icon-btn', 'Export'); exp.type = 'button'; exp.title = 'Download this answer as a file';
+  exp.onclick = (ev) => { ev.stopPropagation(); exportMenu(card, exp, q); };
+  acts.append(share, exp, again, close);
   top.append(tag, acts);
   const interp = h('div', 'interp');
   head.append(top, qEl, interp);
@@ -981,6 +1010,7 @@ function newCard(q) {
     inputTex(tex) { interp.replaceChildren(h('span', null, 'Interpreted as: ')); const k = h('span'); renderTex(k, tex, false); interp.append(k); },
     add(p) {
       const node = renderPod(p);
+      node._pod = p;
       container.append(node);
       return { node, remove() { node.remove(); } };
     },
@@ -991,6 +1021,51 @@ function newCard(q) {
     },
   });
   return { card, ctx: makeCtx(body), body };
+}
+
+// ---------- Export any answer card: CSV, Excel, JSON, Markdown, LaTeX, text, HTML, PNG/SVG, print ----------
+function cardData(card) {
+  const pods = [...card.querySelectorAll('.pod')].filter(n => n._pod && !n._pod.loading);
+  return pods.map(n => {
+    const p = n._pod, t = n.querySelector('table');
+    let table = null;
+    if (t) {
+      const head = [...t.querySelectorAll('thead th')].map(x => x.textContent.trim());
+      const rows = [...t.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(x => x.textContent.trim()));
+      table = { head: head.length ? head : null, rows };
+    }
+    const items = p.numbered || (p.list ? p.list.map(x => [x.title, x.meta, x.snippet, x.url].filter(Boolean).join(' — ')) : null) || (p.chips ? null : null);
+    const text = p.text != null ? String(p.text) : (typeof p.pre === 'string' ? p.pre : '');
+    return { title: p.title || '', text, latex: p.latex || '', table, items, plot: n.querySelector('.js-plotly-plot'), steps: p.steps || null };
+  }).filter(d => d.text || d.latex || d.table || d.items || d.plot || d.steps);
+}
+function exportMenu(card, btn, q) {
+  document.querySelectorAll('.export-menu').forEach(m => m.remove());
+  const menu = h('div', 'export-menu');
+  const data = cardData(card);
+  const base = (q.replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'answer').toLowerCase();
+  const tables = data.filter(d => d.table);
+  const flatRows = () => { const rows = []; for (const d of data) { if (d.table) { rows.push([d.title]); if (d.table.head) rows.push(d.table.head); rows.push(...d.table.rows); } else if (d.items) { rows.push([d.title]); d.items.forEach(x => rows.push([x])); } else rows.push([d.title, d.text || d.latex]); rows.push([]); } return rows; };
+  const md = () => `# ${q}\n\n` + data.map(d => `## ${d.title}\n\n` + (d.table ? K.toMarkdownTable(d.table.head || d.table.rows[0].map((_, i) => `Col ${i + 1}`), d.table.head ? d.table.rows : d.table.rows) : d.items ? d.items.map((x, i) => `${i + 1}. ${x}`).join('\n') : d.latex ? `$$${d.latex}$$` : d.text) + (d.steps ? '\n\n' + d.steps.map((s, i) => `${i + 1}. ${s.rule}: $${s.latex}$`).join('\n') : '')).join('\n\n');
+  const tex = () => ['\\documentclass{article}', '\\usepackage{amsmath,amssymb,booktabs}', '\\usepackage[margin=1in]{geometry}', '\\begin{document}', `\\section*{${K.texEsc(q)}}`, ...data.map(d => `\\subsection*{${K.texEsc(d.title)}}\n` + (d.table ? K.toLatexTable(d.table.head, d.table.rows) : d.items ? '\\begin{enumerate}\n' + d.items.map(x => `  \\item ${K.texEsc(x)}`).join('\n') + '\n\\end{enumerate}' : d.latex ? `\\[ ${d.latex} \\]` : K.texEsc(d.text)) + (d.steps ? '\n\\begin{enumerate}\n' + d.steps.map(s => `  \\item ${K.texEsc(s.rule)}: $${s.latex}$`).join('\n') + '\n\\end{enumerate}' : '')), '\\end{document}'].join('\n');
+  const opts = [
+    ['CSV', () => K.download(`${base}.csv`, '\ufeff' + (tables.length === 1 ? K.toCSV(tables[0].table.head, tables[0].table.rows) : K.toCSV(null, flatRows())), 'text/csv')],
+    ['Excel', async () => K.download(`${base}.xlsx`, await K.toXLSX(tables.length ? tables.map(d => ({ name: d.title || 'Table', head: d.table.head, rows: d.table.rows })).concat(data.some(d => !d.table) ? [{ name: 'Answer', head: ['Item', 'Value'], rows: data.filter(d => !d.table).map(d => [d.title, d.items ? d.items.join('\n') : (d.text || d.latex)]) }] : []) : [{ name: 'Answer', head: ['Item', 'Value'], rows: data.map(d => [d.title, d.items ? d.items.join('\n') : (d.text || d.latex)]) }]), K.XLSX_MIME)],
+    ['JSON', () => K.download(`${base}.json`, JSON.stringify({ query: q, results: data.map(({ plot, ...d }) => d) }, null, 2), 'application/json')],
+    ['Markdown', () => K.download(`${base}.md`, md(), 'text/markdown')],
+    ['LaTeX', () => K.download(`${base}.tex`, tex(), 'application/x-tex')],
+    ['Open in Overleaf', () => K.openInOverleaf(tex())],
+    ['Text', () => K.download(`${base}.txt`, md().replace(/[#$|]/g, '').replace(/\n{3,}/g, '\n\n'), 'text/plain')],
+    ['HTML', () => K.download(`${base}.html`, `<!doctype html><meta charset="utf-8"><title>${q.replace(/</g, '&lt;')}</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css"><style>body{font:16px/1.5 system-ui;max-width:760px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:4px 8px}</style>` + card.querySelector('.pods').innerHTML, 'text/html')],
+    ['Copy as Markdown', async () => { await navigator.clipboard.writeText(md()); }],
+    ['Print / PDF', () => { card.classList.add('print-me'); document.body.classList.add('printing'); window.print(); setTimeout(() => { card.classList.remove('print-me'); document.body.classList.remove('printing'); }, 500); }],
+  ];
+  const plot = data.find(d => d.plot);
+  if (plot) opts.splice(1, 0, ['Chart as PNG', () => window.Plotly.downloadImage(plot.plot, { format: 'png', filename: base, scale: 2 })], ['Chart as SVG', () => window.Plotly.downloadImage(plot.plot, { format: 'svg', filename: base })]);
+  for (const [label, fn] of opts) { const b = h('button', 'export-item', label); b.type = 'button'; b.onclick = async () => { try { await fn(); } catch (e) { b.textContent = `${label}: ${e.message}`; return; } menu.remove(); }; menu.append(b); }
+  btn.parentElement.style.position = 'relative';
+  btn.parentElement.append(menu);
+  setTimeout(() => document.addEventListener('click', function off(e) { if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click', off); } }), 0);
 }
 
 function renderTex(el, tex, display = true) {
@@ -1139,11 +1214,20 @@ async function drawPlot(box, pl) {
       if (t.markers) tr.marker = { color: '#c2410c', size: 8 };
       return tr;
     });
-    layout = { ...base, barmode: 'group', showlegend: pl.traces.length > 1, legend: { orientation: 'h', y: 1.15 }, xaxis: { ...ax, type: pl.xdate ? 'date' : pl.bars ? 'category' : undefined, title: pl.xtitle }, yaxis: { ...ax, title: pl.ytitle }, ...(pl.y2title ? { yaxis2: { ...ax, title: pl.y2title, overlaying: 'y', side: 'right', range: [0, 100], showgrid: false } } : {}) };
+    layout = { ...base, barmode: 'group', showlegend: pl.traces.length > 1, legend: { orientation: 'h', y: 1.15 }, xaxis: { ...ax, type: pl.xdate ? 'date' : pl.bars ? 'category' : undefined, title: pl.xtitle }, yaxis: { ...ax, title: pl.ytitle, ...(pl.equal ? { scaleanchor: 'x', scaleratio: 1 } : {}) }, ...(pl.y2title ? { yaxis2: { ...ax, title: pl.y2title, overlaying: 'y', side: 'right', range: [0, 100], showgrid: false } } : {}) };
     if (pl.y2title) layout.margin = { ...base.margin, r: 48 };
   } else if (pl.kind === 'bar') {
     data = [{ x: pl.x, y: pl.y, type: 'bar', marker: { color: pl.highlight ? pl.highlight.map(b => (b ? '#c2410c' : '#2f5d50')) : '#2f5d50' } }];
     layout = { ...base, xaxis: { ...ax, type: 'category', automargin: true }, yaxis: { ...ax } };
+  } else if (pl.kind === 'box') {
+    data = pl.traces.map((t, i) => ({ y: t.y, name: t.name, type: 'box', boxpoints: 'all', jitter: 0.4, pointpos: 0, marker: { color: PAL[i % PAL.length], size: 5 }, line: { color: PAL[i % PAL.length] } }));
+    layout = { ...base, xaxis: { ...ax }, yaxis: { ...ax } };
+  } else if (pl.kind === 'histogram') {
+    data = [{ x: pl.x, type: 'histogram', marker: { color: '#2f5d50', line: { color: '#fbfaf7', width: 1 } } }];
+    layout = { ...base, xaxis: { ...ax }, yaxis: { ...ax, title: 'count' } };
+  } else if (pl.kind === 'pie') {
+    data = [{ labels: pl.labels, values: pl.values, type: 'pie', hole: 0.45, marker: { colors: PAL }, textinfo: 'label+percent' }];
+    layout = { ...base, margin: { l: 10, r: 10, t: 10, b: 10 } };
   } else if (pl.kind === 'stats') {
     data = [{ x: pl.values, type: 'histogram', marker: { color: '#2f5d50', line: { color: '#fbfaf7', width: 1 } }, xaxis: 'x', yaxis: 'y' }, { x: pl.values, type: 'box', boxpoints: 'all', jitter: 0.4, marker: { color: '#c2410c', size: 5 }, line: { color: '#2f5d50' }, xaxis: 'x', yaxis: 'y2', name: '' }];
     layout = { ...base, grid: { rows: 2, columns: 1 }, xaxis: { ...ax }, yaxis: { ...ax, domain: [0.3, 1], title: 'count' }, yaxis2: { ...ax, domain: [0, 0.2], showticklabels: false } };

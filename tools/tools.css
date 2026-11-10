@@ -189,3 +189,34 @@ mark{background:#fde68a;color:inherit;border-radius:3px;padding:0 1px}
 .timer.ring{color:var(--warn);animation:pulse .8s ease-in-out infinite}
 .qr{width:220px;height:220px;image-rendering:pixelated;border:1px solid var(--line);border-radius:10px;display:block;margin-bottom:10px}
 @media (max-width:640px){.attach{width:40px;height:40px}.go{width:40px;height:40px}.drop-box{font-size:21px;padding:40px 20px}}
+
+/* export menu */
+.card-acts { position: relative; }
+.export-menu { position: absolute; right: 0; top: 2.2rem; z-index: 20; background: var(--bg, #fff); border: 1px solid rgba(0,0,0,.15); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12); padding: .35rem; display: grid; min-width: 11rem; }
+.export-item { text-align: left; background: none; border: 0; padding: .45rem .6rem; border-radius: 6px; font: inherit; font-size: .9rem; cursor: pointer; color: inherit; }
+.export-item:hover { background: rgba(47,93,80,.1); }
+.credits { margin-top: 2rem; }
+@media print {
+  body.printing * { visibility: hidden; }
+  body.printing .print-me, body.printing .print-me * { visibility: visible; }
+  body.printing .print-me { position: absolute; left: 0; top: 0; width: 100%; }
+  body.printing .card-acts { display: none; }
+}
+
+/* study widgets */
+.flashcard{min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--surface);font-size:20px;cursor:pointer;user-select:none;margin-bottom:10px;transition:background .15s}
+.flashcard.back{background:var(--accent-soft);font-size:17px}
+.quiz-q{margin:12px 0}
+.quiz-q p{margin-bottom:6px;font-weight:500}
+.chip.ok{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.chip.bad{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.chip.sel{border-color:var(--ink);box-shadow:0 0 0 2px var(--line)}
+.match-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.chip.match{border-radius:10px;text-align:left;padding:8px 10px;white-space:normal}
+.chip.match:disabled{opacity:.55;cursor:default}
+.pal-row{display:flex;align-items:center;gap:6px;margin:6px 0;flex-wrap:wrap}
+.pal-lab{width:130px;font-size:13px;color:var(--muted)}
+.pal-sw{border:1px solid var(--line);border-radius:8px;padding:12px 8px;font:12px var(--mono);cursor:pointer;min-width:78px}
+.resistor{display:flex;gap:14px;align-items:center;background:#e8d7b5;border-radius:18px;height:38px;padding:0 28px;width:max-content;margin-top:8px}
+.resistor span{width:12px;height:38px;display:block}
+@media (max-width:600px){.pal-lab{width:100%}}

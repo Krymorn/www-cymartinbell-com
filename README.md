@@ -72,6 +72,13 @@ plus a general units-analysis fallback; anything that fits none of them says so 
 | `tools/extras.js` | Local calculators (probability, curve fits, truth tables, timers, time zones, QR codes…) |
 | `tools/more.js` | Code explainer, grades, recipes from ingredients, comparisons, weather at a time, follow-ups |
 | `tools/files.js` | Files as context: PDF, Word, PowerPoint, Excel, images (OCR), text, CSV, JSON, read on the visitor's device |
+| `tools/kit.js` | Shared helpers: CSV/TSV/Excel/LaTeX/Markdown/HTML table export, file downloads, stats distributions (t, χ², F, normal), Overleaf hand-off |
+| `tools/gen.js` | Generators: sample datasets, format conversions, spreadsheet templates with formulas, amortization, calendar (.ics) events, study plans, random picks, passwords, UUIDs, barcodes |
+| `tools/latex.js` | LaTeX: symbol lookup, expression → LaTeX, templates, tables, matrices, pgfplots, chemistry, a ~140-formula library, reference tables, cheat sheet |
+| `tools/dev.js` | Developer tools: 12 package registries, GitHub repos/users/issues/trending, error explainer, sandboxed JS runner, format/minify/validate, diff, regex, SQL on your files (sql.js), cron, chmod, git/terminal recipes, HTTP/MIME/ports/CIDR |
+| `tools/research.js` | Citations in 6 styles + BibTeX/RIS from a DOI, ISBN or web page; saved bibliography; OpenAlex paper/journal/institution/topic analytics; open data and media searches; search builders; email and outline templates |
+| `tools/text.js` | Grammar (LanguageTool), readability, style check, word frequency, similarity, flashcards → Anki/Quizlet, self-quizzes, word games, case/line/cleanup transforms, ciphers, encodings, colors |
+| `tools/calc.js` | Study calculators: grades, statistical tests, chemistry, physics/electronics, biology, discrete math, finance, health, time |
 | `tools/spell.js`, `tools/data/words.txt` | Offline spelling fixes (Norvig's method over a 60,000-word frequency list from the wordfreq project) |
 | `tools/wordproblems.py` | Word problems: formulas with units, geometry, percents, ages, mixtures, rates, algebra from English |
 | `tools/engine.py`, `worker.js` | Symbolic math engine (SymPy running in the browser via Pyodide) |

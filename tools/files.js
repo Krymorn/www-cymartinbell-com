@@ -1075,3 +1075,14 @@ export function initFiles(deps) {
   window.addEventListener('drop', (e) => { if (!e.dataTransfer || !e.dataTransfer.files.length) return; e.preventDefault(); depth = 0; drop.hidden = true; addFiles([...e.dataTransfer.files]); });
   window.addEventListener('paste', (e) => { const f = [...(e.clipboardData && e.clipboardData.files || [])]; if (f.length) { e.preventDefault(); addFiles(f); } });
 }
+
+// Table-shaped files for the SQL runner and other consumers: [{ name, head, rows }]
+export function tables() {
+  const out = [];
+  for (const doc of docs) {
+    if (doc.kind === 'table' && doc.table) out.push({ name: doc.name, head: doc.table.head, rows: doc.table.rows });
+    else if (doc.kind === 'json' && Array.isArray(doc.json) && doc.json.length && typeof doc.json[0] === 'object') { const head = [...new Set(doc.json.flatMap(o => Object.keys(o || {})))]; out.push({ name: doc.name, head, rows: doc.json.map(o => head.map(k => (o && o[k] != null ? (typeof o[k] === 'object' ? JSON.stringify(o[k]) : o[k]) : ''))) }); }
+    else if (doc.text) inlineTables(doc.text).forEach((t, i) => out.push({ name: `${doc.name}#${i + 1}`, head: t.head, rows: t.rows }));
+  }
+  return out;
+}
