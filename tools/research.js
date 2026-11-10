@@ -260,7 +260,7 @@ async function datagov(ctx, q, get) {
   ctx.add({ title: 'More', buttons: [{ label: 'All results on data.gov', url: `https://catalog.data.gov/dataset?q=${enc(q)}` }] });
 }
 async function loc(ctx, q, get) {
-  const r = await get(`https://www.loc.gov/search/?q=${enc(q)}&fo=json&c=10`, { proxy: true, timeout: 30000 });
+  const r = await get(`https://www.loc.gov/search/?q=${enc(q)}&fo=json&c=10`, { timeout: 30000 });
   ctx.label('Library of Congress'); ctx.input(q);
   ctx.add({ title: 'Collections', list: r.results.map(x => ({ title: x.title, url: x.id, thumb: (x.image_url || [])[0], meta: `${(x.original_format || []).join(', ')} · ${x.date || ''}` })) });
 }

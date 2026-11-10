@@ -94,6 +94,8 @@ This repo deploys as a Cloudflare **Worker with static assets** (Workers Builds)
 `wrangler.jsonc`. All files are served as-is; only `/tools/api/proxy` runs code (`worker/`).
 `.assetsignore` keeps config and README files from being served. To enable the optional web
 search, add a secret named `BRAVE_KEY` under the Worker's Settings → Variables and Secrets.
+OpenAlex now gives each IP address a small free daily budget; browsers call it directly so each
+visitor uses their own. A free `OPENALEX_KEY` secret makes proxied OpenAlex calls use your key.
 
 ## Credits
 - Word list in `tools/data/words.txt`: derived from [wordfreq](https://github.com/rspeer/wordfreq)

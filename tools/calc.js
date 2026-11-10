@@ -606,7 +606,9 @@ function triangle(ctx, s) {
   if (alt) ctx.add({ title: 'Ambiguous case', warn: true, text: `SSA can give two triangles. The other has ${alt.an} = ${round(alt.ang, 4)}°. Try it with that angle given.` });
 }
 function oeis(ctx, seq, d) {
-  return d.get(`https://oeis.org/search?q=${K.enc(seq.join(','))}&fmt=json`, { proxy: true }).then(r => {
+  const link = `https://oeis.org/search?q=${K.enc(seq.join(','))}`;
+  return d.get(`https://oeis.org/search?q=${K.enc(seq.join(','))}&fmt=json`, { proxy: true }).catch(() => 'down').then(r => {
+    if (r === 'down') { ctx.label('Sequence'); ctx.input(seq.join(', ')); ctx.add({ title: 'OEIS lookup unavailable right now', text: 'The OEIS didn’t answer from here. Open the search directly:', buttons: [{ label: 'Search the OEIS', url: link }] }); return; }
     const res = (Array.isArray(r) ? r : r && r.results) || [];
     ctx.label('Sequence'); ctx.input(seq.join(', '));
     if (!res.length) { ctx.add({ title: 'Not in the OEIS', text: 'No known integer sequence starts like that.' }); return; }

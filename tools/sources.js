@@ -5,7 +5,7 @@ const PROXY = '/tools/api/proxy?url=';
 
 // Sources that sometimes refuse direct browser requests (CORS on error pages, rate limits):
 // if a direct request fails at the network level, retry once through the site's own helper.
-const FALLBACK = new Set(['simple.wikipedia.org', 'api.openalex.org', 'api.dictionaryapi.dev', 'geocoding-api.open-meteo.com', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'router.project-osrm.org', 'api.datamuse.com', 'openlibrary.org', 'api.coingecko.com', 'api.openalex.org', 'en.wikipedia.org', 'www.wikidata.org', 'api.duckduckgo.com', 'nominatim.openstreetmap.org', 'api.github.com', 'api.artic.edu', 'site.api.espn.com', 'archive-api.open-meteo.com', 'api.nasa.gov', 'api.nal.usda.gov', 'api.anaconda.org', 'api.crossref.org', 'api.ies.ed.gov', 'api.languagetool.org', 'api.npmjs.org', 'api.openverse.org', 'archive.org', 'azuresearch-usnc.nuget.org', 'bundlephobia.com', 'catalog.data.gov', 'commons.wikimedia.org', 'crates.io', 'en.wikiquote.org', 'en.wiktionary.org', 'formulae.brew.sh', 'hex.pm', 'hub.docker.com', 'huggingface.co', 'oeis.org', 'packagist.org', 'pub.dev', 'pypistats.org', 'r-universe.dev', 'registry.npmjs.org', 'rosettacode.org', 'rubygems.org', 'scholar.archive.org', 'search.maven.org', 'www.ebi.ac.uk', 'www.loc.gov', 'zenodo.org']);
+const FALLBACK = new Set(['simple.wikipedia.org', 'api.dictionaryapi.dev', 'geocoding-api.open-meteo.com', 'api.open-meteo.com', 'air-quality-api.open-meteo.com', 'router.project-osrm.org', 'api.datamuse.com', 'openlibrary.org', 'api.coingecko.com', 'api.openalex.org', 'en.wikipedia.org', 'www.wikidata.org', 'api.duckduckgo.com', 'nominatim.openstreetmap.org', 'api.github.com', 'api.artic.edu', 'site.api.espn.com', 'archive-api.open-meteo.com', 'api.nasa.gov', 'api.nal.usda.gov', 'api.anaconda.org', 'api.crossref.org', 'api.ies.ed.gov', 'api.languagetool.org', 'api.npmjs.org', 'api.openverse.org', 'archive.org', 'azuresearch-usnc.nuget.org', 'bundlephobia.com', 'catalog.data.gov', 'commons.wikimedia.org', 'crates.io', 'en.wikiquote.org', 'en.wiktionary.org', 'formulae.brew.sh', 'hex.pm', 'hub.docker.com', 'huggingface.co', 'oeis.org', 'packagist.org', 'pub.dev', 'pypistats.org', 'r-universe.dev', 'registry.npmjs.org', 'rosettacode.org', 'rubygems.org', 'scholar.archive.org', 'search.maven.org', 'www.ebi.ac.uk', 'www.loc.gov', 'zenodo.org']);
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 // ---------- fetching, with caching and politeness ----------
@@ -90,6 +90,7 @@ async function fetchFresh(url, { proxy = false, type = 'json', timeout = 15000, 
     return fetchFresh(url, { proxy, type, timeout, init, retries: retries - 1 });
   }
   if (!r.ok) {
+    if (r.status === 429 && host === 'api.openalex.org') throw new Error('OpenAlex’s free daily allowance for your network is used up (it resets daily). Try “papers on …” for Semantic Scholar/arXiv results, or try again later.');
     if (r.status === 429) throw new Error(`${host} is busy right now (rate limit). Try again in a minute.`);
     if (r.status === 404) throw new Error(`Nothing found at ${host} for that.`);
     throw new Error(`${host} returned an error (${r.status}).`);

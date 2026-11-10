@@ -139,6 +139,8 @@ export async function onRequest({ request, env }) {
   let target;
   try { target = new URL(self.searchParams.get('url') || ''); } catch (_) { return json({ error: 'Bad url' }, 400); }
   if (target.protocol !== 'https:' || !ALLOW.has(target.hostname)) return json({ error: 'Host not allowed' }, 403);
+  // Optional OpenAlex key (Worker secret OPENALEX_KEY) so proxied requests use their own budget.
+  if (target.hostname === 'api.openalex.org' && env && env.OPENALEX_KEY && !target.searchParams.has('api_key')) target.searchParams.set('api_key', env.OPENALEX_KEY);
 
   const method = request.method === 'POST' && POST_OK.has(target.hostname) ? 'POST' : 'GET';
   const init = {
